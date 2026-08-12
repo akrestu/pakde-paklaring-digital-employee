@@ -39,13 +39,13 @@ class PaklaringPdfService
     {
         $url = route('verify.show', $paklaring->verification_token);
 
-        $result = (new Builder(
-            writer: new PngWriter,
-            data: $url,
-            errorCorrectionLevel: ErrorCorrectionLevel::High,
-            size: 220,
-            margin: 4,
-        ))->build();
+        $result = Builder::create()
+            ->writer(new PngWriter)
+            ->data($url)
+            ->errorCorrectionLevel(ErrorCorrectionLevel::High)
+            ->size(220)
+            ->margin(4)
+            ->build();
 
         return $result->getDataUri();
     }

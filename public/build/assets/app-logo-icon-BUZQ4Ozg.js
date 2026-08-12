@@ -1,0 +1,1 @@
+import{i as e,r as t}from"./wayfinder-NrBSjC_p.js";var n=e(),r=t();function i(e){let t=(0,n.c)(2),i;return t[0]===e?i=t[1]:(i=(0,r.jsx)(`img`,{...e,src:`/images/logo-wbk.png`,alt:`PAKDE`}),t[0]=e,t[1]=i),i}export{i as t};

@@ -21,3 +21,34 @@ test('database seeder creates the expected site and admin accounts', function ()
         ->and($siteAdmin->role)->toBe(User::ROLE_SITE_ADMIN)
         ->and($siteAdmin->site_id)->toBe($site->id);
 });
+
+test('database seeder is safe to run again after a partial run', function () {
+    // Simulates the seeder crashing after creating the site but before the
+    // users (e.g. a prior deploy failure) — re-running it must not error
+    // on the site's unique code and must still fill in the missing users.
+    Site::create([
+        'code' => 'BAU',
+        'name' => 'Lahat Site',
+        'company_name' => 'PT. Bara Alam Utama',
+        'address' => 'Merapi Kab. Lahat Sumatera Selatan',
+        'default_project' => 'PT. BAU',
+        'default_location' => 'Lahat',
+        'signer_name' => 'Mario Palondongan',
+        'signer_title' => 'Project Manager',
+        'is_active' => true,
+    ]);
+
+    $this->seed(DatabaseSeeder::class);
+
+    expect(Site::where('code', 'BAU')->count())->toBe(1)
+        ->and(User::where('email', 'admin@wbk.test')->count())->toBe(1)
+        ->and(User::where('email', 'hrga.lahat@wbk.test')->count())->toBe(1);
+
+    // And running it a second time on top of a complete state must also
+    // stay a no-op rather than erroring or duplicating anything.
+    $this->seed(DatabaseSeeder::class);
+
+    expect(Site::where('code', 'BAU')->count())->toBe(1)
+        ->and(User::where('email', 'admin@wbk.test')->count())->toBe(1)
+        ->and(User::where('email', 'hrga.lahat@wbk.test')->count())->toBe(1);
+});

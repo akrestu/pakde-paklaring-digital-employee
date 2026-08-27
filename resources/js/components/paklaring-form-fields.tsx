@@ -16,6 +16,7 @@ import type { Site } from '@/types';
 
 export type PaklaringFormValues = {
     site_id: string;
+    no_surat: string;
     nrpp: string;
     nama: string;
     tempat_lahir: string;
@@ -37,6 +38,7 @@ export type PaklaringFormValues = {
 
 export const emptyPaklaringFormValues: PaklaringFormValues = {
     site_id: '',
+    no_surat: '',
     nrpp: '',
     nama: '',
     tempat_lahir: '',
@@ -57,7 +59,10 @@ export const emptyPaklaringFormValues: PaklaringFormValues = {
 };
 
 /** Fields required to move past each wizard step (see StorePaklaringRequest). */
-export const STEP_REQUIRED_FIELDS: Record<number, (keyof PaklaringFormValues)[]> = {
+export const STEP_REQUIRED_FIELDS: Record<
+    number,
+    (keyof PaklaringFormValues)[]
+> = {
     0: ['site_id', 'nrpp', 'nama', 'tempat_lahir', 'tanggal_lahir', 'alamat'],
     1: [
         'project',
@@ -68,7 +73,7 @@ export const STEP_REQUIRED_FIELDS: Record<number, (keyof PaklaringFormValues)[]>
         'final_versatility',
     ],
     2: ['doh', 'doe', 'alasan_phk'],
-    3: ['signing_lokasi', 'signing_tanggal'],
+    3: ['no_surat', 'signing_lokasi', 'signing_tanggal'],
 };
 
 type OnChange = <K extends keyof PaklaringFormValues>(
@@ -217,9 +222,7 @@ export function SiteKaryawanFields({
                 </div>
 
                 <div className="grid gap-2">
-                    <FieldLabel htmlFor="tempat_lahir">
-                        Tempat Lahir
-                    </FieldLabel>
+                    <FieldLabel htmlFor="tempat_lahir">Tempat Lahir</FieldLabel>
                     <Input {...field('tempat_lahir')} />
                     <InputError message={errors.tempat_lahir} />
                 </div>
@@ -365,15 +368,23 @@ export function MasaKerjaFields({
     );
 }
 
-export function TandaTanganFields({
-    values,
-    onChange,
-    errors,
-}: SectionProps) {
+export function TandaTanganFields({ values, onChange, errors }: SectionProps) {
     const field = useField(values, onChange);
 
     return (
         <div className="grid gap-4 sm:grid-cols-2">
+            <div className="col-span-full grid gap-2">
+                <FieldLabel htmlFor="no_surat">Nomor Surat</FieldLabel>
+                <Input
+                    {...field('no_surat')}
+                    placeholder="Contoh: WBK-BAU-HRGA-2026-VIII-0001"
+                />
+                <p className="text-xs text-muted-foreground">
+                    Diisi manual sesuai buku register paklaring.
+                </p>
+                <InputError message={errors.no_surat} />
+            </div>
+
             <div className="grid gap-2">
                 <FieldLabel htmlFor="signing_lokasi">
                     Lokasi Tanda Tangan
@@ -383,9 +394,7 @@ export function TandaTanganFields({
             </div>
 
             <div className="grid gap-2">
-                <FieldLabel htmlFor="signing_tanggal">
-                    Tanggal Surat
-                </FieldLabel>
+                <FieldLabel htmlFor="signing_tanggal">Tanggal Surat</FieldLabel>
                 <Input type="date" {...field('signing_tanggal')} />
                 <InputError message={errors.signing_tanggal} />
             </div>

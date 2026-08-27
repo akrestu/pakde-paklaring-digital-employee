@@ -74,6 +74,7 @@ export default function CreateBatch({
     const [search, setSearch] = useState('');
     const [siteFilter, setSiteFilter] = useState('all');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [noSurats, setNoSurats] = useState<Record<number, string>>({});
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
@@ -101,8 +102,7 @@ export default function CreateBatch({
                 employee.nama.toLowerCase().includes(term) ||
                 employee.nrpp.toLowerCase().includes(term);
             const matchesSite =
-                siteFilter === 'all' ||
-                String(employee.site_id) === siteFilter;
+                siteFilter === 'all' || String(employee.site_id) === siteFilter;
 
             return matchesSearch && matchesSite;
         });
@@ -150,6 +150,10 @@ export default function CreateBatch({
         });
     }
 
+    function updateNoSurat(id: number, value: string) {
+        setNoSurats((prev) => ({ ...prev, [id]: value }));
+    }
+
     const selectedEmployees = employees.filter((employee) =>
         selectedIds.has(employee.id),
     );
@@ -160,22 +164,33 @@ export default function CreateBatch({
         fields.signing_lokasi.trim() !== '' &&
         fields.signing_tanggal.trim() !== '';
 
-    const canSubmit = selectedIds.size > 0 && sharedFieldsComplete;
+    const allNoSuratsFilled = Array.from(selectedIds).every(
+        (id) => (noSurats[id] ?? '').trim() !== '',
+    );
+
+    const canSubmit =
+        selectedIds.size > 0 && sharedFieldsComplete && allNoSuratsFilled;
 
     function handleSubmit() {
         setProcessing(true);
         setErrors({});
 
+        const selectedNoSurats = Object.fromEntries(
+            Array.from(selectedIds).map((id) => [id, noSurats[id] ?? '']),
+        );
+
         router.post(
             batchStore().url,
             {
                 employee_ids: Array.from(selectedIds),
+                no_surats: selectedNoSurats,
                 ...fields,
             },
             {
                 onSuccess: () => {
                     setConfirmOpen(false);
                     setSelectedIds(new Set());
+                    setNoSurats({});
                 },
                 onError: (responseErrors) => {
                     setErrors(responseErrors);
@@ -212,8 +227,7 @@ export default function CreateBatch({
                         <CircleAlert />
                         <AlertTitle>Ada isian yang perlu diperbaiki</AlertTitle>
                         <AlertDescription>
-                            Periksa kembali kolom yang ditandai merah di
-                            bawah.
+                            Periksa kembali kolom yang ditandai merah di bawah.
                         </AlertDescription>
                     </Alert>
                 )}
@@ -311,6 +325,7 @@ export default function CreateBatch({
                                         <TableHead>Site</TableHead>
                                         <TableHead>Project</TableHead>
                                         <TableHead>Status Data</TableHead>
+                                        <TableHead>Nomor Surat</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -387,13 +402,41 @@ export default function CreateBatch({
                                                     </Badge>
                                                 )}
                                             </TableCell>
+                                            <TableCell>
+                                                <Input
+                                                    value={
+                                                        noSurats[employee.id] ??
+                                                        ''
+                                                    }
+                                                    onChange={(event) =>
+                                                        updateNoSurat(
+                                                            employee.id,
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        !selectedIds.has(
+                                                            employee.id,
+                                                        )
+                                                    }
+                                                    placeholder="No. surat"
+                                                    className="w-48"
+                                                />
+                                                <InputError
+                                                    message={
+                                                        errors[
+                                                            `no_surats.${employee.id}`
+                                                        ]
+                                                    }
+                                                />
+                                            </TableCell>
                                         </TableRow>
                                     ))}
 
                                     {filteredEmployees.length === 0 && (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={5}
+                                                colSpan={6}
                                                 className="h-24 text-center text-muted-foreground"
                                             >
                                                 Tidak ada karyawan yang cocok.
@@ -440,10 +483,7 @@ export default function CreateBatch({
                                 </SelectTrigger>
                                 <SelectContent>
                                     {alasanPhkOptions.map((option) => (
-                                        <SelectItem
-                                            key={option}
-                                            value={option}
-                                        >
+                                        <SelectItem key={option} value={option}>
                                             {option}
                                         </SelectItem>
                                     ))}
@@ -559,9 +599,10 @@ export default function CreateBatch({
                     <DialogDescription>
                         Setiap karyawan berikut akan mendapat satu surat
                         paklaring dengan alasan &quot;{fields.alasan_phk}
-                        &quot;, ditandatangani di {fields.signing_lokasi} pada{' '}
-                        {fields.signing_tanggal}. Status aktif mereka di Data
-                        Karyawan juga akan otomatis dinonaktifkan.
+                        &quot;, ditandatangani di {
+                            fields.signing_lokasi
+                        } pada {fields.signing_tanggal}. Status aktif mereka di
+                        Data Karyawan juga akan otomatis dinonaktifkan.
                     </DialogDescription>
 
                     <ul className="max-h-48 list-disc space-y-1 overflow-y-auto rounded-lg border bg-muted/30 p-4 pl-8 text-sm">
@@ -569,7 +610,8 @@ export default function CreateBatch({
                             <li key={employee.id}>
                                 {employee.nama}{' '}
                                 <span className="text-muted-foreground">
-                                    ({employee.nrpp})
+                                    ({employee.nrpp}) —{' '}
+                                    {noSurats[employee.id] || '-'}
                                 </span>
                             </li>
                         ))}

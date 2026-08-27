@@ -89,12 +89,16 @@ function StepIndicator({
     return (
         <ol className="flex items-center gap-2 sm:gap-4">
             {STEPS.map((step, i) => {
-                const isDone = i < completeUpTo || (i === completeUpTo && i < current);
+                const isDone =
+                    i < completeUpTo || (i === completeUpTo && i < current);
                 const isCurrent = i === current;
                 const clickable = i <= current;
 
                 return (
-                    <li key={step.title} className="flex flex-1 items-center gap-2 sm:gap-4">
+                    <li
+                        key={step.title}
+                        className="flex flex-1 items-center gap-2 sm:gap-4"
+                    >
                         <button
                             type="button"
                             disabled={!clickable}
@@ -174,6 +178,7 @@ function ReviewSummary({
             </p>
             <dl className="grid gap-3 sm:grid-cols-3">
                 <ReviewRow label="Site" value={site?.name ?? '-'} />
+                <ReviewRow label="Nomor Surat" value={values.no_surat} />
                 <ReviewRow label="NRPP" value={values.nrpp} />
                 <ReviewRow label="Nama" value={values.nama} />
                 <ReviewRow label="Project" value={values.project} />
@@ -402,17 +407,14 @@ export default function Create({
                             <Card>
                                 <CardHeader>
                                     <CardTitle>
-                                        Langkah {step + 1}:{' '}
-                                        {STEPS[step].title}
+                                        Langkah {step + 1}: {STEPS[step].title}
                                     </CardTitle>
                                     <CardDescription>
                                         {STEPS[step].description}
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <div
-                                        className={step === 0 ? '' : 'hidden'}
-                                    >
+                                    <div className={step === 0 ? '' : 'hidden'}>
                                         <SiteKaryawanFields
                                             values={values}
                                             onChange={handleChange}
@@ -425,25 +427,19 @@ export default function Create({
                                             }}
                                         />
                                     </div>
-                                    <div
-                                        className={step === 1 ? '' : 'hidden'}
-                                    >
+                                    <div className={step === 1 ? '' : 'hidden'}>
                                         <ProjekKlasifikasiFields
                                             values={values}
                                             onChange={handleChange}
                                             errors={errors}
                                         />
                                     </div>
-                                    <div
-                                        className={step === 2 ? '' : 'hidden'}
-                                    >
+                                    <div className={step === 2 ? '' : 'hidden'}>
                                         <MasaKerjaFields
                                             values={values}
                                             onChange={handleChange}
                                             errors={errors}
-                                            alasanPhkOptions={
-                                                alasanPhkOptions
-                                            }
+                                            alasanPhkOptions={alasanPhkOptions}
                                         />
                                     </div>
                                     <div
@@ -495,9 +491,7 @@ export default function Create({
                                     {isLastStep ? (
                                         <Button
                                             type="submit"
-                                            disabled={
-                                                processing || !canGoNext
-                                            }
+                                            disabled={processing || !canGoNext}
                                         >
                                             {processing && <Spinner />}
                                             Simpan &amp; Buat PDF

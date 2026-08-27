@@ -4,15 +4,14 @@ use App\Models\Employee;
 use App\Models\Paklaring;
 use App\Models\Site;
 use App\Models\User;
-use App\Services\PaklaringNumberGenerator;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-function makePaklaringPayload(Site $site): array
+function makePaklaringPayload(Site $site, string $noSurat = 'WBK-BAU-HRGA-2025-VIII-0001'): array
 {
     return [
         'site_id' => $site->id,
+        'no_surat' => $noSurat,
         'nrpp' => '202214889',
         'nama' => 'Doni',
         'tempat_lahir' => 'Tanjung Sakti',
@@ -32,35 +31,39 @@ function makePaklaringPayload(Site $site): array
     ];
 }
 
-test('number generator produces sequential numbers per site and resets per year', function () {
-    $site = Site::factory()->create(['code' => 'BAU']);
-    $generator = app(PaklaringNumberGenerator::class);
-
-    $first = $generator->generate($site, Carbon::parse('2025-08-15'));
-    $second = $generator->generate($site, Carbon::parse('2025-08-20'));
-    $nextYear = $generator->generate($site, Carbon::parse('2026-01-05'));
-
-    expect($first)->toBe('WBK-BAU-HRGA-2025-VIII-0001')
-        ->and($second)->toBe('WBK-BAU-HRGA-2025-VIII-0002')
-        ->and($nextYear)->toBe('WBK-BAU-HRGA-2026-I-0001');
-});
-
 test('site admin can create a paklaring for their own site and a pdf is generated', function () {
     Storage::fake('local');
 
     $site = Site::factory()->create(['code' => 'BAU']);
     $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
 
-    $response = $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
+    $response = $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site, 'WBK-BAU-HRGA-2025-VIII-0834'));
 
     $paklaring = Paklaring::sole();
 
     $response->assertRedirect(route('paklarings.show', $paklaring));
     expect($paklaring->site_id)->toBe($site->id)
-        ->and($paklaring->no_surat)->toStartWith('WBK-BAU-HRGA-')
+        ->and($paklaring->no_surat)->toBe('WBK-BAU-HRGA-2025-VIII-0834')
         ->and($paklaring->file_path)->not->toBeNull();
 
     Storage::disk('local')->assertExists($paklaring->file_path);
+});
+
+test('no_surat is entered manually and must be unique', function () {
+    Storage::fake('local');
+
+    $site = Site::factory()->create(['code' => 'BAU']);
+    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
+
+    $this->actingAs($user)
+        ->post(route('paklarings.store'), makePaklaringPayload($site, 'WBK-BAU-HRGA-2025-VIII-0001'))
+        ->assertRedirect();
+
+    $this->actingAs($user)
+        ->post(route('paklarings.store'), makePaklaringPayload($site, 'WBK-BAU-HRGA-2025-VIII-0001'))
+        ->assertSessionHasErrors('no_surat');
+
+    expect(Paklaring::count())->toBe(1);
 });
 
 test('site admin cannot view or delete a paklaring belonging to another site', function () {
@@ -98,78 +101,13 @@ test('super admin can view paklarings from any site', function () {
     $this->actingAs($admin)->get(route('paklarings.show', $paklaring))->assertOk();
 });
 
-test('deleting the most recently issued paklaring reclaims its number', function () {
-    Storage::fake('local');
-
-    $site = Site::factory()->create(['code' => 'BAU']);
-    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
-
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-
-    $latest = Paklaring::latest('id')->first();
-    expect($latest->no_surat)->toEndWith('0003');
-
-    $this->actingAs($user)->delete(route('paklarings.destroy', $latest))->assertRedirect();
-
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-    $newest = Paklaring::latest('id')->first();
-
-    expect($newest->no_surat)->toEndWith('0003')
-        ->and($newest->no_surat)->toBe($latest->no_surat);
-});
-
-test('deleting a paklaring that is not the latest for its site/year does not reclaim its number', function () {
-    Storage::fake('local');
-
-    $site = Site::factory()->create(['code' => 'BAU']);
-    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
-
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-
-    $middle = Paklaring::orderBy('id')->get()[1];
-    expect($middle->no_surat)->toEndWith('0002');
-
-    $this->actingAs($user)->delete(route('paklarings.destroy', $middle))->assertRedirect();
-
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-    $newest = Paklaring::latest('id')->first();
-
-    expect($newest->no_surat)->toEndWith('0004');
-});
-
-test('bulk deleting the two most recent paklarings reclaims both numbers', function () {
-    Storage::fake('local');
-
-    $site = Site::factory()->create(['code' => 'BAU']);
-    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
-
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-
-    $toDelete = Paklaring::orderBy('id')->get()->slice(1, 2);
-    expect($toDelete->pluck('no_surat')->map(fn ($no) => Str::afterLast($no, '-'))->all())
-        ->toBe(['0002', '0003']);
-
-    $this->actingAs($user)
-        ->delete(route('paklarings.bulkDestroy'), ['ids' => $toDelete->pluck('id')->all()])
-        ->assertRedirect();
-
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-    $this->actingAs($user)->post(route('paklarings.store'), makePaklaringPayload($site));
-
-    expect(Paklaring::pluck('no_surat')->map(fn ($no) => Str::afterLast($no, '-'))->sort()->values()->all())
-        ->toBe(['0001', '0002', '0003']);
-});
-
 function batchPayload(array $employeeIds): array
 {
     return [
         'employee_ids' => $employeeIds,
+        'no_surats' => collect($employeeIds)->mapWithKeys(fn ($id, $i) => [
+            $id => sprintf('WBK-BAU-HRGA-2026-I-%04d', $i + 1),
+        ])->all(),
         'alasan_phk' => 'Efisiensi',
         'doe' => '2026-01-15',
         'remarks' => null,
@@ -178,20 +116,22 @@ function batchPayload(array $employeeIds): array
     ];
 }
 
-test('batch store creates one paklaring per selected employee and deactivates them', function () {
+test('batch store creates one paklaring per selected employee using the manually entered numbers', function () {
     Storage::fake('local');
 
     $site = Site::factory()->create(['code' => 'BAU']);
     $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
     $employees = Employee::factory()->for($site, 'site')->count(3)->create(['is_active' => true]);
 
+    $payload = batchPayload($employees->pluck('id')->all());
+
     $this->actingAs($user)
-        ->post(route('paklarings.batchStore'), batchPayload($employees->pluck('id')->all()))
+        ->post(route('paklarings.batchStore'), $payload)
         ->assertRedirect(route('paklarings.index'));
 
     expect(Paklaring::count())->toBe(3)
-        ->and(Paklaring::pluck('no_surat')->map(fn ($no) => Str::afterLast($no, '-'))->sort()->values()->all())
-        ->toBe(['0001', '0002', '0003'])
+        ->and(Paklaring::pluck('no_surat')->sort()->values()->all())
+        ->toBe(collect($payload['no_surats'])->sort()->values()->all())
         ->and(Employee::whereIn('id', $employees->pluck('id'))->where('is_active', true)->count())
         ->toBe(0);
 });
@@ -211,6 +151,23 @@ test('batch store skips employees with incomplete data instead of failing the wh
     expect(Paklaring::count())->toBe(1)
         ->and(Paklaring::sole()->nrpp)->toBe($ready->nrpp)
         ->and($incomplete->fresh()->is_active)->toBeTrue();
+});
+
+test('batch store rejects duplicate manually entered numbers within the same submission', function () {
+    Storage::fake('local');
+
+    $site = Site::factory()->create(['code' => 'BAU']);
+    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
+    $employees = Employee::factory()->for($site, 'site')->count(2)->create(['is_active' => true]);
+
+    $payload = batchPayload($employees->pluck('id')->all());
+    $payload['no_surats'] = collect($payload['no_surats'])->map(fn () => 'WBK-BAU-HRGA-2026-I-0001')->all();
+
+    $this->actingAs($user)
+        ->post(route('paklarings.batchStore'), $payload)
+        ->assertSessionHasErrors();
+
+    expect(Paklaring::count())->toBe(0);
 });
 
 test('a site admin cannot batch create paklarings for another site\'s employees', function () {

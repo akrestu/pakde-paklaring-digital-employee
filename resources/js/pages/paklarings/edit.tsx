@@ -21,6 +21,7 @@ export default function Edit({
 }) {
     const [values, setValues] = useState<PaklaringFormValues>({
         site_id: String(paklaring.site_id),
+        no_surat: paklaring.no_surat,
         nrpp: paklaring.nrpp,
         nama: paklaring.nama,
         tempat_lahir: paklaring.tempat_lahir,

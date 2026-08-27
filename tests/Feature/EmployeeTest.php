@@ -220,6 +220,7 @@ test('creating a paklaring marks the matching employee as inactive', function ()
 
     $this->actingAs($user)->post(route('paklarings.store'), [
         'nrpp' => '555',
+        'no_surat' => 'WBK-BAU-HRGA-2025-I-0001',
         'nama' => $employee->nama,
         'tempat_lahir' => 'Jakarta',
         'tanggal_lahir' => '1990-01-01',

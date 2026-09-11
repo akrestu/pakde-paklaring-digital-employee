@@ -15,7 +15,7 @@
 
     header {
         position: fixed;
-        top: -70px;
+        top: -58px;
         left: 0;
         right: 0;
         height: 60px;
@@ -76,7 +76,7 @@
 
     footer {
         position: fixed;
-        bottom: -55px;
+        bottom: -30px;
         left: 0;
         right: 0;
         height: 50px;

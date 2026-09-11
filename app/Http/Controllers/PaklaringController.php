@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class PaklaringController extends Controller
 {
@@ -314,12 +314,22 @@ class PaklaringController extends Controller
         return to_route('paklarings.index');
     }
 
-    public function pdf(Paklaring $paklaring): StreamedResponse
+    public function pdf(Request $request, Paklaring $paklaring, PaklaringPdfService $pdfService): HttpResponse
     {
         $this->authorize('view', $paklaring);
 
-        abort_unless($paklaring->file_path && Storage::disk('local')->exists($paklaring->file_path), 404);
+        $validated = $request->validate([
+            'paper_size' => ['sometimes', Rule::in(array_keys(PaklaringPdfService::PAPER_SIZES))],
+            'download' => ['sometimes', 'boolean'],
+        ]);
 
-        return Storage::disk('local')->response($paklaring->file_path, $paklaring->no_surat.'.pdf');
+        $paperSize = $validated['paper_size'] ?? PaklaringPdfService::DEFAULT_PAPER_SIZE;
+        $disposition = ($validated['download'] ?? false) ? 'attachment' : 'inline';
+        $filename = $paklaring->no_surat.'-'.$paperSize.'.pdf';
+
+        return response($pdfService->render($paklaring, $paperSize), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
+        ]);
     }
 }

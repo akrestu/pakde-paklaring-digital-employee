@@ -8,7 +8,8 @@
 
     body {
         font-family: 'Helvetica', 'Arial', sans-serif;
-        font-size: 10.5px;
+        font-size: 13.5px;
+        line-height: 1.3;
         color: #1a1a1a;
     }
 
@@ -41,29 +42,29 @@
     }
 
     .title { text-align: center; margin-bottom: 4px; }
-    .title h1 { font-size: 13px; margin: 0; text-decoration: underline; }
-    .title .subtitle { font-size: 11px; font-style: italic; color: #1f3d99; margin: 2px 0; }
-    .title .no-surat { font-size: 12px; font-weight: bold; text-decoration: underline; margin-top: 4px; }
+    .title h1 { font-size: 18px; margin: 0; text-decoration: underline; }
+    .title .subtitle { font-size: 14.5px; font-style: italic; color: #1f3d99; margin: 2px 0; }
+    .title .no-surat { font-size: 15.5px; font-weight: bold; text-decoration: underline; margin-top: 4px; }
 
-    .intro { margin: 14px 0 10px 0; }
+    .intro { margin: 12px 0 8px 0; }
     .intro .en { font-weight: bold; }
     .intro .id { font-style: italic; color: #1f3d99; }
 
     table.fields { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-    table.fields td { padding: 5px 0; vertical-align: top; }
+    table.fields td { padding: 5.5px 0; vertical-align: top; }
     table.fields td.label { width: 180px; }
     table.fields td.colon { width: 12px; }
     table.fields .en { font-weight: bold; text-decoration: underline; }
     table.fields .id { font-style: italic; color: #1f3d99; }
     table.fields .value { font-weight: bold; }
 
-    .closing { margin: 12px 0 26px 0; }
+    .closing { margin: 10px 0 18px 0; line-height: 1.35; }
     .closing .en { }
     .closing .id { font-style: italic; color: #1f3d99; }
 
-    .signature { width: 55%; }
+    .signature { width: 65%; }
     .signature .place-date { margin-bottom: 2px; }
-    .signature .company { font-weight: bold; margin-bottom: 48px; }
+    .signature .company { font-weight: bold; margin-bottom: 72px; }
     .signature .signer-name { font-weight: bold; text-decoration: underline; }
     .signature .signer-title { margin-top: 2px; }
 
@@ -71,7 +72,7 @@
     .qr-wrap img { width: 90px; height: 90px; }
     .qr-wrap .hint { font-size: 7px; color: #555; width: 90px; }
 
-    .signature-row { position: relative; min-height: 100px; }
+    .signature-row { position: relative; min-height: 130px; }
 
     footer {
         position: fixed;
@@ -79,7 +80,8 @@
         left: 0;
         right: 0;
         height: 50px;
-        font-size: 8.5px;
+        font-size: 10.5px;
+        line-height: 1.25;
         color: #1f3d99;
         font-style: italic;
     }

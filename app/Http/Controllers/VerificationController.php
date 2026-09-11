@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Paklaring;
-use Illuminate\Support\Facades\Storage;
+use App\Services\PaklaringPdfService;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class VerificationController extends Controller
 {
@@ -28,14 +28,17 @@ class VerificationController extends Controller
         ]);
     }
 
-    public function download(string $token): StreamedResponse
+    public function download(string $token, PaklaringPdfService $pdfService): HttpResponse
     {
         $paklaring = Str::isUuid($token)
             ? Paklaring::where('verification_token', $token)->first()
             : null;
 
-        abort_unless($paklaring && $paklaring->file_path && Storage::disk('local')->exists($paklaring->file_path), 404);
+        abort_unless($paklaring, 404);
 
-        return Storage::disk('local')->response($paklaring->file_path, $paklaring->no_surat.'.pdf');
+        return response($pdfService->render($paklaring), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$paklaring->no_surat.'-'.PaklaringPdfService::DEFAULT_PAPER_SIZE.'.pdf"',
+        ]);
     }
 }

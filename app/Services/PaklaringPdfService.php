@@ -11,28 +11,45 @@ use Illuminate\Support\Facades\Storage;
 
 class PaklaringPdfService
 {
+    public const DEFAULT_PAPER_SIZE = 'f4';
+
+    /**
+     * Paper dimensions in points (1 point = 1/72 inch).
+     * F4 uses the common Indonesian folio size: 210 x 330 mm.
+     *
+     * @var array<string, string|array{0: float, 1: float, 2: float, 3: float}>
+     */
+    public const PAPER_SIZES = [
+        'f4' => [0.0, 0.0, 595.28, 935.43],
+        'a4' => 'a4',
+    ];
+
     /**
      * Render the paklaring PDF, store it on the private "local" disk, and
      * return the storage path (saved on the model as file_path).
      */
-    public function generate(Paklaring $paklaring): string
+    public function generate(Paklaring $paklaring, string $paperSize = self::DEFAULT_PAPER_SIZE): string
+    {
+        $path = 'paklaring/'.$paklaring->no_surat.'.pdf';
+
+        Storage::disk('local')->put($path, $this->render($paklaring, $paperSize));
+
+        return $path;
+    }
+
+    /** Render a fresh PDF in the requested supported paper size. */
+    public function render(Paklaring $paklaring, string $paperSize = self::DEFAULT_PAPER_SIZE): string
     {
         $paklaring->loadMissing('site');
 
-        $qrDataUri = $this->buildVerificationQrCode($paklaring);
+        $paper = self::PAPER_SIZES[$paperSize] ?? self::PAPER_SIZES[self::DEFAULT_PAPER_SIZE];
 
-        $pdf = Pdf::loadView('pdf.paklaring', [
+        return Pdf::loadView('pdf.paklaring', [
             'paklaring' => $paklaring,
             'site' => $paklaring->site,
             'headOffice' => config('company.head_office'),
-            'qrDataUri' => $qrDataUri,
-        ])->setPaper('a4', 'portrait');
-
-        $path = 'paklaring/'.$paklaring->no_surat.'.pdf';
-
-        Storage::disk('local')->put($path, $pdf->output());
-
-        return $path;
+            'qrDataUri' => $this->buildVerificationQrCode($paklaring),
+        ])->setPaper($paper, 'portrait')->output();
     }
 
     private function buildVerificationQrCode(Paklaring $paklaring): string

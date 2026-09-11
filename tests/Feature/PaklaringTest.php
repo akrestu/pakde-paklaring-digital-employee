@@ -47,6 +47,8 @@ test('site admin can create a paklaring for their own site and a pdf is generate
         ->and($paklaring->file_path)->not->toBeNull();
 
     Storage::disk('local')->assertExists($paklaring->file_path);
+    expect(pdfPageDimensions(Storage::disk('local')->get($paklaring->file_path)))
+        ->toEqualWithDelta([595.28, 935.43], 0.01);
 });
 
 test('no_surat is entered manually and must be unique', function () {
@@ -99,6 +101,62 @@ test('super admin can view paklarings from any site', function () {
     $paklaring = Paklaring::factory()->for($site, 'site')->create();
 
     $this->actingAs($admin)->get(route('paklarings.show', $paklaring))->assertOk();
+});
+
+test('authorized user can export paklaring as f4 or a4 pdf', function () {
+    $site = Site::factory()->create();
+    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
+    $paklaring = Paklaring::factory()->for($site, 'site')->create();
+
+    $f4 = $this->actingAs($user)->get(route('paklarings.pdf', [
+        'paklaring' => $paklaring,
+        'paper_size' => 'f4',
+    ]));
+
+    $f4->assertOk()
+        ->assertHeader('content-type', 'application/pdf')
+        ->assertHeader('content-disposition', 'inline; filename="'.$paklaring->no_surat.'-f4.pdf"');
+
+    expect(pdfPageDimensions($f4->getContent()))
+        ->toEqualWithDelta([595.28, 935.43], 0.01)
+        ->and(pdfPageCount($f4->getContent()))->toBe(1);
+
+    $a4 = $this->actingAs($user)->get(route('paklarings.pdf', [
+        'paklaring' => $paklaring,
+        'paper_size' => 'a4',
+        'download' => 1,
+    ]));
+
+    $a4->assertOk()
+        ->assertHeader('content-type', 'application/pdf')
+        ->assertHeader('content-disposition', 'attachment; filename="'.$paklaring->no_surat.'-a4.pdf"');
+
+    expect(pdfPageDimensions($a4->getContent()))
+        ->toEqualWithDelta([595.28, 841.89], 0.01)
+        ->and(pdfPageCount($a4->getContent()))->toBe(1);
+});
+
+/** @return array{0: float, 1: float} */
+function pdfPageDimensions(string $pdf): array
+{
+    preg_match('/\/MediaBox\s*\[\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)\s*\]/', $pdf, $matches);
+
+    return [(float) $matches[1], (float) $matches[2]];
+}
+
+function pdfPageCount(string $pdf): int
+{
+    return preg_match_all('/\/Type\s*\/Page\b/', $pdf);
+}
+
+test('paklaring pdf rejects an unsupported paper size', function () {
+    $site = Site::factory()->create();
+    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
+    $paklaring = Paklaring::factory()->for($site, 'site')->create();
+
+    $this->actingAs($user)
+        ->get(route('paklarings.pdf', ['paklaring' => $paklaring, 'paper_size' => 'legal']))
+        ->assertSessionHasErrors('paper_size');
 });
 
 function batchPayload(array $employeeIds): array

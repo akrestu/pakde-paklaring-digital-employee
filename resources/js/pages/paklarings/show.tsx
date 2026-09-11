@@ -1,4 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import { Download, Printer } from 'lucide-react';
+import { useState } from 'react';
 import PaklaringController from '@/actions/App/Http/Controllers/PaklaringController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
@@ -11,6 +13,13 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { edit, index, pdf } from '@/routes/paklarings';
 import type { Paklaring } from '@/types';
 
@@ -32,6 +41,14 @@ export default function Show({
     paklaring: Paklaring;
     verificationUrl: string;
 }) {
+    const [paperSize, setPaperSize] = useState<'f4' | 'a4'>('f4');
+    const previewUrl = pdf(paklaring, {
+        query: { paper_size: paperSize },
+    }).url;
+    const downloadUrl = pdf(paklaring, {
+        query: { paper_size: paperSize, download: 1 },
+    }).url;
+
     return (
         <>
             <Head title={paklaring.no_surat} />
@@ -43,14 +60,43 @@ export default function Show({
                         description={`${paklaring.nama} — ${paklaring.site?.name ?? ''}`}
                     />
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Select
+                            value={paperSize}
+                            onValueChange={(value: 'f4' | 'a4') =>
+                                setPaperSize(value)
+                            }
+                        >
+                            <SelectTrigger
+                                className="w-[170px]"
+                                aria-label="Ukuran kertas"
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="f4">
+                                    F4 (210 x 330 mm)
+                                </SelectItem>
+                                <SelectItem value="a4">
+                                    A4 (210 x 297 mm)
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+
                         <Button asChild variant="outline">
                             <a
-                                href={pdf(paklaring).url}
+                                href={previewUrl}
                                 target="_blank"
                                 rel="noreferrer"
                             >
-                                Unduh PDF
+                                <Printer />
+                                Cetak
+                            </a>
+                        </Button>
+                        <Button asChild variant="outline">
+                            <a href={downloadUrl}>
+                                <Download />
+                                Export PDF
                             </a>
                         </Button>
                         <Button asChild variant="outline">
@@ -182,8 +228,9 @@ export default function Show({
 
                         <div className="overflow-hidden rounded-xl border">
                             <iframe
-                                src={pdf(paklaring).url}
-                                title="Preview PDF"
+                                key={previewUrl}
+                                src={previewUrl}
+                                title={`Preview PDF ukuran ${paperSize.toUpperCase()}`}
                                 className="h-[600px] w-full"
                             />
                         </div>

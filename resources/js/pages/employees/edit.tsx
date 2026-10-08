@@ -1,11 +1,11 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, CircleAlert } from 'lucide-react';
+import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 import { EmployeeFormFields } from '@/components/employee-form-fields';
 import Heading from '@/components/heading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { Auth, Employee, Site } from '@/types';
-import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 
 export default function Edit({
     employee,

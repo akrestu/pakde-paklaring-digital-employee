@@ -49,8 +49,8 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useInitials } from '@/hooks/use-initials';
-import type { Employee, Site } from '@/types';
 import { batchStore, index } from '@/routes/paklarings';
+import type { Employee, Site } from '@/types';
 
 type SharedFields = {
     alasan_phk: string;

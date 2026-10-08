@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
-import type { Paklaring } from '@/types';
 import VerificationController from '@/actions/App/Http/Controllers/VerificationController';
+import type { Paklaring } from '@/types';
 
 function Row({ label, value }: { label: string; value: string }) {
     return (

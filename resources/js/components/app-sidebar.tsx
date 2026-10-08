@@ -19,12 +19,12 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import type { Auth } from '@/types';
 import { dashboard } from '@/routes';
 import { index as employeesIndex } from '@/routes/employees';
 import { index as paklaringsIndex } from '@/routes/paklarings';
 import { index as sitesIndex } from '@/routes/sites';
 import { index as usersIndex } from '@/routes/users';
+import type { Auth } from '@/types';
 
 export function AppSidebar() {
     const {

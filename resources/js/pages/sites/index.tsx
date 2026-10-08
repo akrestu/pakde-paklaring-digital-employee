@@ -1,4 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import SiteController from '@/actions/App/Http/Controllers/SiteController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,9 +11,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import type { Site } from '@/types';
-import SiteController from '@/actions/App/Http/Controllers/SiteController';
 import { create, edit, index } from '@/routes/sites';
+import type { Site } from '@/types';
 
 export default function Index({ sites }: { sites: Site[] }) {
     return (

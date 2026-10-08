@@ -58,7 +58,6 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useInitials } from '@/hooks/use-initials';
-import type { Auth, PaginatedData, Paklaring, Site } from '@/types';
 import {
     bulkDestroy,
     create,
@@ -69,6 +68,7 @@ import {
     pdf,
     show,
 } from '@/routes/paklarings';
+import type { Auth, PaginatedData, Paklaring, Site } from '@/types';
 
 function decodeLabel(label: string): string {
     return label

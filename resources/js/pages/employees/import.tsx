@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { Info, Upload } from 'lucide-react';
 import { useState } from 'react';
+import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -15,7 +16,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import type { Site } from '@/types';
-import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 
 export default function Import({ sites }: { sites: Site[] }) {
     const [siteId, setSiteId] = useState('none');

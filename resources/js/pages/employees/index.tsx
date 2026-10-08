@@ -13,6 +13,7 @@ import {
     X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 import Heading from '@/components/heading';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -60,7 +61,6 @@ import {
 } from '@/components/ui/table';
 import { useInitials } from '@/hooks/use-initials';
 import type { Auth, Employee, PaginatedData, Site } from '@/types';
-import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 
 function decodeLabel(label: string): string {
     return label

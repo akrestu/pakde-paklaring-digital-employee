@@ -1,12 +1,12 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
+import PaklaringController from '@/actions/App/Http/Controllers/PaklaringController';
 import Heading from '@/components/heading';
 import { PaklaringFormFields } from '@/components/paklaring-form-fields';
 import type { PaklaringFormValues } from '@/components/paklaring-form-fields';
 import { Button } from '@/components/ui/button';
-import type { Paklaring } from '@/types';
-import PaklaringController from '@/actions/App/Http/Controllers/PaklaringController';
 import { index, show } from '@/routes/paklarings';
+import type { Paklaring } from '@/types';
 
 function toDateInputValue(value: string): string {
     return value.slice(0, 10);

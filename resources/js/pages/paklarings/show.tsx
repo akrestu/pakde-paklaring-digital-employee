@@ -1,7 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { Download, Printer } from 'lucide-react';
 import { useState } from 'react';
-import PaklaringController from '@/actions/App/Http/Controllers/PaklaringController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,8 +19,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { edit, index, pdf } from '@/routes/paklarings';
 import type { Paklaring } from '@/types';
+import PaklaringController from '@/actions/App/Http/Controllers/PaklaringController';
+import { edit, index, pdf } from '@/routes/paklarings';
 
 function Field({ label, value }: { label: string; value: string }) {
     return (

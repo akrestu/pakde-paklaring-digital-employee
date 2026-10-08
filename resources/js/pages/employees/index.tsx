@@ -13,7 +13,6 @@ import {
     X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 import Heading from '@/components/heading';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -61,6 +60,7 @@ import {
 } from '@/components/ui/table';
 import { useInitials } from '@/hooks/use-initials';
 import type { Auth, Employee, PaginatedData, Site } from '@/types';
+import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 
 function decodeLabel(label: string): string {
     return label
@@ -104,8 +104,7 @@ export default function Index({
     ).length;
     const allOnPageSelected =
         pageIds.length > 0 && selectedOnPageCount === pageIds.length;
-    const someOnPageSelected =
-        selectedOnPageCount > 0 && !allOnPageSelected;
+    const someOnPageSelected = selectedOnPageCount > 0 && !allOnPageSelected;
 
     function toggleAllOnPage(checked: boolean) {
         setSelectedIds((prev) => {
@@ -334,9 +333,7 @@ export default function Index({
                                         </label>
                                         <Select
                                             value={perPageValue}
-                                            onValueChange={
-                                                handlePerPageChange
-                                            }
+                                            onValueChange={handlePerPageChange}
                                         >
                                             <SelectTrigger
                                                 id="per_page"
@@ -452,9 +449,7 @@ export default function Index({
                                         <div className="flex items-center gap-3">
                                             <Avatar>
                                                 <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-                                                    {getInitials(
-                                                        employee.nama,
-                                                    )}
+                                                    {getInitials(employee.nama)}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <span className="font-medium whitespace-nowrap">
@@ -648,8 +643,8 @@ export default function Index({
                     </DialogTitle>
                     <DialogDescription>
                         Data paklaring yang sudah pernah dibuat untuk
-                        karyawan-karyawan ini tidak akan terpengaruh.
-                        Tindakan ini tidak bisa dibatalkan.
+                        karyawan-karyawan ini tidak akan terpengaruh. Tindakan
+                        ini tidak bisa dibatalkan.
                     </DialogDescription>
                     <DialogFooter className="gap-2">
                         <Button

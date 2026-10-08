@@ -1,7 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { Info, Upload } from 'lucide-react';
 import { useState } from 'react';
-import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -16,6 +15,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import type { Site } from '@/types';
+import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 
 export default function Import({ sites }: { sites: Site[] }) {
     const [siteId, setSiteId] = useState('none');
@@ -39,23 +39,21 @@ export default function Import({ sites }: { sites: Site[] }) {
                             <p>
                                 nrpp, site, nama, tempat_lahir, tanggal_lahir,
                                 alamat, project, lokasi,
-                                beginning_classification,
-                                beginning_versatility, classification,
-                                versatility, doh
+                                beginning_classification, beginning_versatility,
+                                classification, versatility, doh
                             </p>
                             <p>
                                 Kolom <strong>site</strong> diisi kode site
-                                (mis. &quot;BAU&quot;) dan otomatis
-                                disinkronkan ke site yang sudah terdaftar di
-                                aplikasi — tiap baris bisa punya site berbeda.
-                                Kalau kosong, dipakai site default yang
-                                dipilih di bawah.
+                                (mis. &quot;BAU&quot;) dan otomatis disinkronkan
+                                ke site yang sudah terdaftar di aplikasi — tiap
+                                baris bisa punya site berbeda. Kalau kosong,
+                                dipakai site default yang dipilih di bawah.
                             </p>
                             <p>
                                 Template sudah berisi 1 baris contoh pengisian
                                 (NRPP &quot;CONTOH001&quot;) sebagai panduan
-                                format — baris itu otomatis dilewati saat
-                                import walau lupa dihapus.
+                                format — baris itu otomatis dilewati saat import
+                                walau lupa dihapus.
                             </p>
                             <a
                                 href={EmployeeController.template().url}
@@ -91,10 +89,10 @@ export default function Import({ sites }: { sites: Site[] }) {
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="none">
-                                                            Tidak ada default
-                                                            — wajib isi kolom
-                                                            &quot;site&quot;
-                                                            di file
+                                                            Tidak ada default —
+                                                            wajib isi kolom
+                                                            &quot;site&quot; di
+                                                            file
                                                         </SelectItem>
                                                         {sites.map((site) => (
                                                             <SelectItem
@@ -170,9 +168,7 @@ export default function Import({ sites }: { sites: Site[] }) {
                                                     )
                                                 }
                                             />
-                                            <InputError
-                                                message={errors.file}
-                                            />
+                                            <InputError message={errors.file} />
                                         </div>
 
                                         <div className="flex items-center gap-3">

@@ -1,8 +1,8 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import SiteController from '@/actions/App/Http/Controllers/SiteController';
 import Heading from '@/components/heading';
 import { SiteFormFields } from '@/components/site-form-fields';
 import { Button } from '@/components/ui/button';
+import SiteController from '@/actions/App/Http/Controllers/SiteController';
 import { index } from '@/routes/sites';
 
 export default function Create() {

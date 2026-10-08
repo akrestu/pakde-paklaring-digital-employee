@@ -13,11 +13,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
-const GREETINGS = [
-    'Selamat datang!',
-    'Welcome!',
-    'Selamat bekerja!',
-];
+const GREETINGS = ['Selamat datang!', 'Welcome!', 'Selamat bekerja!'];
 
 const TYPING_SPEED = 60;
 const DELETING_SPEED = 35;
@@ -39,7 +35,10 @@ function useTypingGreeting(words: string[]) {
                 setDisplayed(next);
 
                 if (next === current) {
-                    timeoutRef.current = setTimeout(() => setIsDeleting(true), PAUSE_AFTER_TYPE);
+                    timeoutRef.current = setTimeout(
+                        () => setIsDeleting(true),
+                        PAUSE_AFTER_TYPE,
+                    );
                 } else {
                     timeoutRef.current = setTimeout(tick, TYPING_SPEED);
                 }
@@ -50,14 +49,20 @@ function useTypingGreeting(words: string[]) {
                 if (next === '') {
                     setIsDeleting(false);
                     setWordIndex((i) => (i + 1) % words.length);
-                    timeoutRef.current = setTimeout(() => {}, PAUSE_AFTER_DELETE);
+                    timeoutRef.current = setTimeout(
+                        () => {},
+                        PAUSE_AFTER_DELETE,
+                    );
                 } else {
                     timeoutRef.current = setTimeout(tick, DELETING_SPEED);
                 }
             }
         };
 
-        timeoutRef.current = setTimeout(tick, isDeleting ? DELETING_SPEED : TYPING_SPEED);
+        timeoutRef.current = setTimeout(
+            tick,
+            isDeleting ? DELETING_SPEED : TYPING_SPEED,
+        );
 
         return () => {
             if (timeoutRef.current) {
@@ -85,14 +90,13 @@ export default function Login({ status, canResetPassword }: Props) {
             <Card className="w-full max-w-sm rounded-3xl border border-border/60 px-2 py-8 shadow-sm">
                 <CardContent>
                     <div className="flex flex-col items-center gap-8">
-
                         {/* Logo */}
                         <div className="flex flex-col items-center gap-3">
                             <div className="flex h-16 w-16 items-center justify-center">
                                 <AppLogoIcon className="size-16 object-contain" />
                             </div>
                             <div className="flex flex-col items-center gap-0.5">
-                                <span className="text-sm font-semibold tracking-widest uppercase text-foreground">
+                                <span className="text-sm font-semibold tracking-widest text-foreground uppercase">
                                     PAKDE
                                 </span>
                                 <span className="text-xs text-muted-foreground">
@@ -128,7 +132,10 @@ export default function Login({ status, canResetPassword }: Props) {
                             {({ processing, errors }) => (
                                 <>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="email" className="block text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                        <Label
+                                            htmlFor="email"
+                                            className="block text-center text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                        >
                                             Email
                                         </Label>
                                         <Input
@@ -146,7 +153,10 @@ export default function Login({ status, canResetPassword }: Props) {
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="password" className="block text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                        <Label
+                                            htmlFor="password"
+                                            className="block text-center text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                        >
                                             Password
                                         </Label>
                                         <PasswordInput
@@ -161,7 +171,11 @@ export default function Login({ status, canResetPassword }: Props) {
                                         <InputError message={errors.password} />
                                         {canResetPassword && (
                                             <div className="text-center">
-                                                <TextLink href={request()} className="text-xs" tabIndex={5}>
+                                                <TextLink
+                                                    href={request()}
+                                                    className="text-xs"
+                                                    tabIndex={5}
+                                                >
                                                     Lupa password?
                                                 </TextLink>
                                             </div>
@@ -173,7 +187,9 @@ export default function Login({ status, canResetPassword }: Props) {
                                             id="remember"
                                             name="remember"
                                             checked={remember}
-                                            onCheckedChange={(val) => setRemember(val === true)}
+                                            onCheckedChange={(val) =>
+                                                setRemember(val === true)
+                                            }
                                             tabIndex={3}
                                         />
                                         <Label

@@ -58,6 +58,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useInitials } from '@/hooks/use-initials';
+import type { Auth, PaginatedData, Paklaring, Site } from '@/types';
 import {
     bulkDestroy,
     create,
@@ -68,7 +69,6 @@ import {
     pdf,
     show,
 } from '@/routes/paklarings';
-import type { Auth, PaginatedData, Paklaring, Site } from '@/types';
 
 function decodeLabel(label: string): string {
     return label
@@ -112,8 +112,7 @@ export default function Index({
     ).length;
     const allOnPageSelected =
         pageIds.length > 0 && selectedOnPageCount === pageIds.length;
-    const someOnPageSelected =
-        selectedOnPageCount > 0 && !allOnPageSelected;
+    const someOnPageSelected = selectedOnPageCount > 0 && !allOnPageSelected;
 
     function toggleAllOnPage(checked: boolean) {
         setSelectedIds((prev) => {
@@ -332,9 +331,7 @@ export default function Index({
                                         </label>
                                         <Select
                                             value={perPageValue}
-                                            onValueChange={
-                                                handlePerPageChange
-                                            }
+                                            onValueChange={handlePerPageChange}
                                         >
                                             <SelectTrigger
                                                 id="per_page"
@@ -476,10 +473,7 @@ export default function Index({
                                         {paklaring.site?.name ?? '-'}
                                     </TableCell>
                                     <TableCell className="text-muted-foreground">
-                                        {paklaring.signing_tanggal.slice(
-                                            0,
-                                            10,
-                                        )}
+                                        {paklaring.signing_tanggal.slice(0, 10)}
                                     </TableCell>
                                     <TableCell>
                                         <DropdownMenu>
@@ -623,9 +617,9 @@ export default function Index({
                                 Hapus paklaring {deleteTarget.no_surat}?
                             </DialogTitle>
                             <DialogDescription>
-                                Tindakan ini tidak bisa dibatalkan. PDF dan
-                                link verifikasi untuk paklaring ini akan
-                                dihapus permanen.
+                                Tindakan ini tidak bisa dibatalkan. PDF dan link
+                                verifikasi untuk paklaring ini akan dihapus
+                                permanen.
                             </DialogDescription>
                             <Form
                                 {...destroy.form(deleteTarget)}

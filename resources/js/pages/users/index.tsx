@@ -1,5 +1,4 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import UserController from '@/actions/App/Http/Controllers/UserController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,8 +10,9 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { create, edit, index } from '@/routes/users';
 import type { Auth, User } from '@/types';
+import UserController from '@/actions/App/Http/Controllers/UserController';
+import { create, edit, index } from '@/routes/users';
 
 export default function Index({ users }: { users: User[] }) {
     const {

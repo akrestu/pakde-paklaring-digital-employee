@@ -1,10 +1,10 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import UserController from '@/actions/App/Http/Controllers/UserController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { UserFormFields } from '@/components/user-form-fields';
-import { index } from '@/routes/users';
 import type { Site, User } from '@/types';
+import UserController from '@/actions/App/Http/Controllers/UserController';
+import { index } from '@/routes/users';
 
 export default function Edit({ user, sites }: { user: User; sites: Site[] }) {
     return (

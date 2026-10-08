@@ -37,13 +37,13 @@ import {
 } from '@/components/ui/chart';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
+import type { Auth, Paklaring } from '@/types';
 import { dashboard } from '@/routes';
 import { index as employeesIndex } from '@/routes/employees';
 import {
     create as createPaklaring,
     show as showPaklaring,
 } from '@/routes/paklarings';
-import type { Auth, Paklaring } from '@/types';
 
 type MonthlyTrend = { month: string; total: number };
 type SiteBreakdown = { site: string; total: number };

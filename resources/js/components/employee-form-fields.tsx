@@ -248,9 +248,7 @@ export function EmployeeFormFields({
                             }
                             placeholder="Contoh: Skilled"
                         />
-                        <InputError
-                            message={errors.beginning_classification}
-                        />
+                        <InputError message={errors.beginning_classification} />
                     </div>
 
                     <div className="grid gap-2">
@@ -260,9 +258,7 @@ export function EmployeeFormFields({
                         <Input
                             id="beginning_versatility"
                             name="beginning_versatility"
-                            defaultValue={
-                                employee?.beginning_versatility ?? ''
-                            }
+                            defaultValue={employee?.beginning_versatility ?? ''}
                             placeholder="Contoh: Multi Skilled"
                         />
                         <InputError message={errors.beginning_versatility} />

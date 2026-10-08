@@ -34,7 +34,7 @@ class VerificationController extends Controller
             ? Paklaring::where('verification_token', $token)->first()
             : null;
 
-        abort_unless($paklaring, 404);
+        abort_if($paklaring === null, 404);
 
         return response($pdfService->render($paklaring), 200, [
             'Content-Type' => 'application/pdf',

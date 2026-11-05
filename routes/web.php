@@ -13,7 +13,6 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('verify/{token}', [VerificationController::class, 'show'])->name('verify.show');
-Route::get('verify/{token}/download', [VerificationController::class, 'download'])->name('verify.download');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');

@@ -255,7 +255,7 @@ class PaklaringController extends Controller
         $this->authorize('view', $paklaring);
 
         return Inertia::render('paklarings/show', [
-            'paklaring' => $paklaring->load('site'),
+            'paklaring' => $paklaring->load(['site', 'creator:id,name']),
             'verificationUrl' => route('verify.show', $paklaring->verification_token),
         ]);
     }

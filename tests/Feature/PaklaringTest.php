@@ -337,3 +337,47 @@ test('filters never widen a site admin beyond their own site', function () {
         ->get(route('paklarings.index', ['alasan_phk' => 'Resign', 'site_id' => $siteB->id]))
         ->assertInertia(fn ($page) => $page->has('paklarings.data', 1));
 });
+
+test('public verification page only exposes the fields needed to confirm authenticity', function () {
+    $site = Site::factory()->create(['signer_name' => 'Ir. Penanda Tangan', 'signer_title' => 'HR Manager']);
+    $paklaring = Paklaring::factory()->for($site, 'site')->create([
+        'nama' => 'Doni',
+        'final_classification' => 'Operator',
+        'signing_tanggal' => '2026-11-05',
+        'doh' => '2023-05-12',
+        'doe' => '2026-10-31',
+    ]);
+
+    $response = $this->get(route('verify.show', $paklaring->verification_token));
+
+    $response->assertOk()->assertInertia(fn ($page) => $page
+        ->where('valid', true)
+        ->where('paklaring', [
+            'no_surat' => $paklaring->no_surat,
+            'nama' => 'Doni',
+            'tanggal_terbit' => '2026-11-05',
+            'signer_name' => 'Ir. Penanda Tangan',
+            'signer_title' => 'HR Manager',
+            'final_classification' => 'Operator',
+            'doh' => '2023-05-12',
+            'doe' => '2026-10-31',
+        ])
+    );
+
+    // Nothing sensitive may reach the browser, not even in the raw page props.
+    $html = $response->getContent();
+    foreach ([$paklaring->alamat, $paklaring->nrpp, $paklaring->tempat_lahir, $paklaring->alasan_phk] as $secret) {
+        expect($html)->not->toContain(e($secret));
+    }
+    foreach (['"alamat"', '"tanggal_lahir"', '"nrpp"', '"alasan_phk"', '"verification_token"', '"file_path"'] as $key) {
+        expect($html)->not->toContain($key);
+    }
+});
+
+test('the public pdf download route no longer exists', function () {
+    $paklaring = Paklaring::factory()->create();
+
+    expect(Route::has('verify.download'))->toBeFalse();
+
+    $this->get('/verify/'.$paklaring->verification_token.'/download')->assertNotFound();
+});

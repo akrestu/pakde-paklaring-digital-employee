@@ -14,7 +14,7 @@ import { store } from '@/routes/password/confirm';
 export default function ConfirmPassword() {
     return (
         <>
-            <Head title="Confirm password" />
+            <Head title="Konfirmasi password" />
 
             <PasskeyVerify
                 routes={{
@@ -34,7 +34,7 @@ export default function ConfirmPassword() {
                             <PasswordInput
                                 id="password"
                                 name="password"
-                                placeholder="Password"
+                                placeholder="Masukkan password"
                                 autoComplete="current-password"
                                 autoFocus
                             />
@@ -44,12 +44,13 @@ export default function ConfirmPassword() {
 
                         <div className="flex items-center">
                             <Button
+                                size="lg"
                                 className="w-full"
                                 disabled={processing}
                                 data-test="confirm-password-button"
                             >
                                 {processing && <Spinner />}
-                                Confirm password
+                                Konfirmasi password
                             </Button>
                         </div>
                     </div>
@@ -60,7 +61,7 @@ export default function ConfirmPassword() {
 }
 
 ConfirmPassword.layout = {
-    title: 'Confirm password',
+    title: 'Konfirmasi password',
     description:
-        'This is a secure area of the application. Please confirm your password before continuing.',
+        'Ini area aman. Konfirmasi password Anda sebelum melanjutkan.',
 };

@@ -6,15 +6,15 @@ import { edit as editAppearance } from '@/routes/appearance';
 export default function Appearance() {
     return (
         <>
-            <Head title="Appearance settings" />
+            <Head title="Tampilan" />
 
             <h1 className="sr-only">Appearance settings</h1>
 
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Appearance settings"
-                    description="Update the appearance settings for your account"
+                    title="Tampilan"
+                    description="Pilih tema terang, gelap, atau ikuti sistem."
                 />
                 <AppearanceTabs />
             </div>

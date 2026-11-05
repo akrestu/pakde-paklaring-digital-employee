@@ -149,7 +149,7 @@ export default function TwoFactorRecoveryCodes({
                                         access your account and will be removed
                                         after use. If you need more, click{' '}
                                         <span className="font-bold">
-                                            Regenerate codes
+                                            Buat ulang kode
                                         </span>{' '}
                                         above.
                                     </p>

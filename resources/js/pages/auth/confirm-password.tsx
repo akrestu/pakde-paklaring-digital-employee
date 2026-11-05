@@ -21,9 +21,9 @@ export default function ConfirmPassword() {
                     options: confirmOptions(),
                     submit: confirmStore(),
                 }}
-                label="Confirm with passkey"
+                label="Konfirmasi dengan passkey"
                 loadingLabel="Confirming..."
-                separator="Or confirm with password"
+                separator="Atau konfirmasi dengan password"
             />
 
             <Form {...store.form()} resetOnSuccess={['password']}>

@@ -1,12 +1,11 @@
-import InputError from '@/components/input-error';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useState } from 'react';
+import { Field } from '@/components/paklaring-form-fields';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import type { Site } from '@/types';
 
-const textareaClassName =
-    'border-input flex min-h-16 w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm';
-
+/** Site fields per `screens/SiteForm.html`; is_active is sent as 1 or 0. */
 export function SiteFormFields({
     site,
     errors,
@@ -14,115 +13,121 @@ export function SiteFormFields({
     site?: Site;
     errors: Partial<Record<string, string>>;
 }) {
+    const [active, setActive] = useState(site?.is_active ?? true);
+    const field = (name: keyof Site, value?: string | null) => ({
+        id: name,
+        name,
+        defaultValue: value ?? '',
+        'aria-invalid': errors[name] ? true : undefined,
+    });
+
     return (
-        <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-                <Label htmlFor="code">Kode Site</Label>
+        <div className="flex flex-col gap-3.5">
+            <div className="grid gap-3.5 sm:grid-cols-2">
+                <Field
+                    label="Kode"
+                    htmlFor="code"
+                    error={errors.code}
+                    hint="Huruf besar, dipakai di no. surat."
+                >
+                    <Input
+                        {...field('code', site?.code)}
+                        placeholder="BAU"
+                        required
+                        className="tabular uppercase"
+                    />
+                </Field>
+                <Field label="Nama site" htmlFor="name" error={errors.name}>
+                    <Input {...field('name', site?.name)} required />
+                </Field>
+            </div>
+            <Field
+                label="Nama perusahaan"
+                htmlFor="company_name"
+                error={errors.company_name}
+            >
                 <Input
-                    id="code"
-                    name="code"
-                    defaultValue={site?.code}
-                    placeholder="BAU"
+                    {...field('company_name', site?.company_name)}
                     required
                 />
-                <p className="text-xs text-muted-foreground">
-                    Dipakai di No Surat, mis. WBK-BAU-HRGA-2025-VIII-0001.
-                </p>
-                <InputError message={errors.code} />
-            </div>
-
-            <div className="grid gap-2">
-                <Label htmlFor="name">Nama Site</Label>
-                <Input
-                    id="name"
-                    name="name"
-                    defaultValue={site?.name}
-                    placeholder="Lahat Site"
+            </Field>
+            <Field label="Alamat" htmlFor="address" error={errors.address}>
+                <Textarea
+                    {...field('address', site?.address)}
+                    rows={2}
                     required
                 />
-                <InputError message={errors.name} />
+            </Field>
+            <div className="grid gap-3.5 sm:grid-cols-2">
+                <Field
+                    label="Project default"
+                    htmlFor="default_project"
+                    error={errors.default_project}
+                    optional
+                >
+                    <Input
+                        {...field('default_project', site?.default_project)}
+                    />
+                </Field>
+                <Field
+                    label="Lokasi default"
+                    htmlFor="default_location"
+                    error={errors.default_location}
+                    optional
+                >
+                    <Input
+                        {...field('default_location', site?.default_location)}
+                    />
+                </Field>
+                <Field
+                    label="Nama penandatangan"
+                    htmlFor="signer_name"
+                    error={errors.signer_name}
+                    optional
+                >
+                    <Input {...field('signer_name', site?.signer_name)} />
+                </Field>
+                <Field
+                    label="Jabatan penandatangan"
+                    htmlFor="signer_title"
+                    error={errors.signer_title}
+                    optional
+                >
+                    <Input {...field('signer_title', site?.signer_title)} />
+                </Field>
             </div>
 
-            <div className="grid gap-2">
-                <Label htmlFor="company_name">Nama Perusahaan (Footer)</Label>
-                <Input
-                    id="company_name"
-                    name="company_name"
-                    defaultValue={site?.company_name}
-                    placeholder="PT. Bara Alam Utama"
-                    required
-                />
-                <InputError message={errors.company_name} />
-            </div>
-
-            <div className="grid gap-2">
-                <Label htmlFor="address">Alamat (Footer)</Label>
-                <textarea
-                    id="address"
-                    name="address"
-                    defaultValue={site?.address}
-                    className={textareaClassName}
-                    required
-                />
-                <InputError message={errors.address} />
-            </div>
-
-            <div className="grid gap-2">
-                <Label htmlFor="default_project">Default Project</Label>
-                <Input
-                    id="default_project"
-                    name="default_project"
-                    defaultValue={site?.default_project ?? ''}
-                    placeholder="PT. BAU"
-                />
-                <InputError message={errors.default_project} />
-            </div>
-
-            <div className="grid gap-2">
-                <Label htmlFor="default_location">Default Lokasi</Label>
-                <Input
-                    id="default_location"
-                    name="default_location"
-                    defaultValue={site?.default_location ?? ''}
-                    placeholder="Lahat"
-                />
-                <InputError message={errors.default_location} />
-            </div>
-
-            <div className="grid gap-2">
-                <Label htmlFor="signer_name">Nama Penandatangan</Label>
-                <Input
-                    id="signer_name"
-                    name="signer_name"
-                    defaultValue={site?.signer_name ?? ''}
-                    placeholder="Mario Palondongan"
-                />
-                <InputError message={errors.signer_name} />
-            </div>
-
-            <div className="grid gap-2">
-                <Label htmlFor="signer_title">Jabatan Penandatangan</Label>
-                <Input
-                    id="signer_title"
-                    name="signer_title"
-                    defaultValue={site?.signer_title ?? ''}
-                    placeholder="Project Manager"
-                />
-                <InputError message={errors.signer_title} />
-            </div>
-
-            <div className="col-span-full flex items-center gap-2">
-                <Checkbox
-                    id="is_active"
-                    name="is_active"
-                    value="1"
-                    defaultChecked={site?.is_active ?? true}
-                />
-                <Label htmlFor="is_active">
-                    Site aktif (bisa dipilih saat membuat paklaring baru)
-                </Label>
-                <InputError message={errors.is_active} />
-            </div>
+            <input
+                type="hidden"
+                name="is_active"
+                value={active ? '1' : '0'}
+            />
+            <button
+                type="button"
+                role="switch"
+                aria-checked={active}
+                onClick={() => setActive((v) => !v)}
+                className="flex h-11 items-center gap-2.5 self-start rounded-full border border-border bg-card pr-4 pl-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+                <span
+                    aria-hidden
+                    className={cn(
+                        'relative h-6 w-10 rounded-full transition-colors',
+                        active ? 'bg-success' : 'bg-border',
+                    )}
+                >
+                    <span
+                        className={cn(
+                            'absolute top-0.5 size-5 rounded-full bg-white shadow transition-[left]',
+                            active ? 'left-[18px]' : 'left-0.5',
+                        )}
+                    />
+                </span>
+                Site aktif
+            </button>
+            <p className="-mt-1.5 text-xs text-muted-foreground">
+                Hanya site aktif yang bisa dipilih saat membuat paklaring baru.
+            </p>
         </div>
     );
 }

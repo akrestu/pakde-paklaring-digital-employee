@@ -19,6 +19,8 @@ class UserController extends Controller
 
         return Inertia::render('users/index', [
             'users' => User::with('site')->orderBy('name')->get(),
+            // For the create/edit sheet opened from this list.
+            'sites' => Site::orderBy('name')->get(['id', 'name']),
         ]);
     }
 

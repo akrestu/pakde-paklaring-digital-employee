@@ -1,8 +1,5 @@
 import { Link } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
-import Heading from '@/components/heading';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
@@ -11,68 +8,53 @@ import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
 
 const sidebarNavItems: NavItem[] = [
-    {
-        title: 'Profile',
-        href: edit(),
-        icon: null,
-    },
-    {
-        title: 'Security',
-        href: editSecurity(),
-        icon: null,
-    },
-    {
-        title: 'Appearance',
-        href: editAppearance(),
-        icon: null,
-    },
+    { title: 'Profil', href: edit(), icon: null },
+    { title: 'Keamanan', href: editSecurity(), icon: null },
+    { title: 'Tampilan', href: editAppearance(), icon: null },
 ];
 
+/**
+ * Pengaturan per `screens/Pengaturan.html`. The three Fortify settings
+ * routes stay separate pages; this layout gives them one title, a pill tab
+ * bar and a card for the content.
+ */
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
 
     return (
-        <div>
-            <Heading
-                title="Settings"
-                description="Manage your profile and account settings"
-            />
+        <div className="flex flex-col gap-4 md:gap-5">
+            <h1 className="hidden text-[30px] leading-[1.15] font-extrabold tracking-[-0.025em] md:block">
+                Pengaturan
+            </h1>
 
-            <div className="flex flex-col lg:flex-row lg:space-x-12">
-                <aside className="w-full max-w-xl lg:w-48">
-                    <nav
-                        className="flex flex-col space-y-1 space-x-0"
-                        aria-label="Settings"
-                    >
-                        {sidebarNavItems.map((item, index) => (
-                            <Button
-                                key={`${toUrl(item.href)}-${index}`}
-                                size="sm"
-                                variant="ghost"
-                                asChild
-                                className={cn('w-full justify-start', {
-                                    'bg-muted': isCurrentOrParentUrl(item.href),
-                                })}
-                            >
-                                <Link href={item.href}>
-                                    {item.icon && (
-                                        <item.icon className="h-4 w-4" />
-                                    )}
-                                    {item.title}
-                                </Link>
-                            </Button>
-                        ))}
-                    </nav>
-                </aside>
+            <nav
+                aria-label="Pengaturan"
+                className="grid w-full grid-cols-3 gap-0.5 self-start rounded-full bg-muted p-1 sm:w-auto"
+            >
+                {sidebarNavItems.map((item) => {
+                    const active = isCurrentOrParentUrl(item.href);
 
-                <Separator className="my-6 lg:hidden" />
+                    return (
+                        <Link
+                            key={toUrl(item.href)}
+                            href={item.href}
+                            aria-current={active ? 'page' : undefined}
+                            className={cn(
+                                'flex h-10 items-center justify-center rounded-full px-5 text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                active
+                                    ? 'bg-card text-foreground shadow-[0_1px_2px_oklch(0.191_0_0/0.12)]'
+                                    : 'text-muted-foreground hover:text-foreground',
+                            )}
+                        >
+                            {item.title}
+                        </Link>
+                    );
+                })}
+            </nav>
 
-                <div className="flex-1 md:max-w-2xl">
-                    <section className="max-w-xl space-y-12">
-                        {children}
-                    </section>
-                </div>
-            </div>
+            <section className="flex max-w-3xl flex-col gap-10 rounded-lg bg-card p-5 shadow-[0_1px_2px_oklch(0.191_0_0/0.06)] md:p-6">
+                {children}
+            </section>
         </div>
     );
 }

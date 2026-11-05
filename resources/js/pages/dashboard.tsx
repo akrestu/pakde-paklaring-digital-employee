@@ -123,13 +123,6 @@ function Hero({
                 alt=""
                 className="absolute inset-0 -z-30 size-full object-cover object-[62%_70%] md:object-[60%_64%]"
             />
-            <img
-                src="/images/topo.png"
-                alt=""
-                aria-hidden
-                className="pointer-events-none absolute inset-0 -z-20 size-full object-cover object-[0%_50%] opacity-40 mix-blend-multiply md:opacity-50"
-            />
-            <div aria-hidden className="absolute inset-0 -z-10 bg-black/50" />
 
             {/* Mobile top row: logo + theme toggle (no shell header here). */}
             <div className="flex items-center gap-2.5 md:hidden">

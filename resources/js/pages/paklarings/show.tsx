@@ -5,7 +5,6 @@ import {
     Link2,
     Pencil,
     Printer,
-    QrCode,
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -60,9 +59,11 @@ function Group({ title, items }: { title: string; items: [string, string][] }) {
 export default function Show({
     paklaring,
     verificationUrl,
+    qrDataUri,
 }: {
     paklaring: Paklaring;
     verificationUrl: string;
+    qrDataUri: string;
 }) {
     const [paperSize, setPaperSize] = useState<'f4' | 'a4'>('f4');
     const [, copy] = useClipboard();
@@ -221,11 +222,11 @@ export default function Show({
 
                     <aside className="flex flex-col gap-3">
                         <section className={cn(card, 'flex gap-4 p-4 md:p-5')}>
-                            <div className="flex size-[88px] shrink-0 items-center justify-center rounded-md bg-muted">
-                                <QrCode
-                                    className="size-12"
-                                    strokeWidth={1.4}
-                                    aria-hidden
+                            <div className="flex size-[88px] shrink-0 items-center justify-center rounded-md bg-white p-1.5">
+                                <img
+                                    src={qrDataUri}
+                                    alt={`QR verifikasi ${paklaring.no_surat}`}
+                                    className="size-full"
                                 />
                             </div>
                             <div className="flex min-w-0 flex-col gap-1">

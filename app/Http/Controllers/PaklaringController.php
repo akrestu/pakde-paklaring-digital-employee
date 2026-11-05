@@ -9,6 +9,9 @@ use App\Models\Paklaring;
 use App\Models\Site;
 use App\Services\PaklaringPdfService;
 use Carbon\Carbon;
+use Endroid\QrCode\Builder\Builder as QrBuilder;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\Writer\SvgWriter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -272,9 +275,19 @@ class PaklaringController extends Controller
     {
         $this->authorize('view', $paklaring);
 
+        $verificationUrl = route('verify.show', $paklaring->verification_token);
+
         return Inertia::render('paklarings/show', [
             'paklaring' => $paklaring->load(['site', 'creator:id,name']),
-            'verificationUrl' => route('verify.show', $paklaring->verification_token),
+            'verificationUrl' => $verificationUrl,
+            'qrDataUri' => QrBuilder::create()
+                ->writer(new SvgWriter)
+                ->data($verificationUrl)
+                ->errorCorrectionLevel(ErrorCorrectionLevel::High)
+                ->size(176)
+                ->margin(0)
+                ->build()
+                ->getDataUri(),
         ]);
     }
 

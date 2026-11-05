@@ -233,21 +233,39 @@ class PaklaringController extends Controller
             return $paklarings;
         });
 
-        $message = $created->count() === 1
-            ? '1 paklaring berhasil dibuat.'
-            : "{$created->count()} paklaring berhasil dibuat.";
-
-        if ($skipped->isNotEmpty()) {
-            $message .= ' '.$skipped->count().' dilewati karena data karyawan belum lengkap atau nomor surat belum diisi: '
-                .$skipped->pluck('nama')->implode(', ').'.';
-        }
-
-        Inertia::flash('toast', [
-            'type' => $skipped->isEmpty() ? 'success' : 'error',
-            'message' => $message,
+        // The batch page renders its result screen from this flash: what was
+        // created, and every skipped employee with the reason it was skipped.
+        Inertia::flash('batchResult', [
+            'created' => $created->map(fn (Paklaring $paklaring) => [
+                'id' => $paklaring->id,
+                'no_surat' => $paklaring->no_surat,
+                'nama' => $paklaring->nama,
+                'nrpp' => $paklaring->nrpp,
+            ])->values()->all(),
+            'skipped' => $skipped->map(fn (Employee $employee) => [
+                'id' => $employee->id,
+                'nama' => $employee->nama,
+                'nrpp' => $employee->nrpp,
+                'reason' => $this->batchSkipReason($employee, $validated['no_surats'][$employee->id] ?? null),
+            ])->values()->all(),
         ]);
 
-        return to_route('paklarings.index');
+        return to_route('paklarings.createBatch');
+    }
+
+    private function batchSkipReason(Employee $employee, mixed $noSurat): string
+    {
+        $missing = $employee->paklaringMissingFields();
+
+        if ($missing !== []) {
+            $list = count($missing) > 1
+                ? implode(', ', array_slice($missing, 0, -1)).' dan '.end($missing)
+                : $missing[0];
+
+            return ucfirst($list).' belum diisi.';
+        }
+
+        return filled($noSurat) ? 'Tidak bisa dibuat.' : 'Nomor surat belum diisi.';
     }
 
     public function show(Paklaring $paklaring): Response

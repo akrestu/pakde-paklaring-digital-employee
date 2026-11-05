@@ -185,7 +185,9 @@ test('batch store creates one paklaring per selected employee using the manually
 
     $this->actingAs($user)
         ->post(route('paklarings.batchStore'), $payload)
-        ->assertRedirect(route('paklarings.index'));
+        ->assertRedirect(route('paklarings.createBatch'))
+        ->assertInertiaFlash('batchResult.created.2.no_surat', 'WBK-BAU-HRGA-2026-I-0003')
+        ->assertInertiaFlash('batchResult.skipped', []);
 
     expect(Paklaring::count())->toBe(3)
         ->and(Paklaring::pluck('no_surat')->sort()->values()->all())
@@ -204,7 +206,14 @@ test('batch store skips employees with incomplete data instead of failing the wh
 
     $this->actingAs($user)
         ->post(route('paklarings.batchStore'), batchPayload([$ready->id, $incomplete->id]))
-        ->assertRedirect(route('paklarings.index'));
+        ->assertRedirect(route('paklarings.createBatch'))
+        ->assertInertiaFlash('batchResult.created.0.nrpp', $ready->nrpp)
+        ->assertInertiaFlash('batchResult.skipped', [[
+            'id' => $incomplete->id,
+            'nama' => $incomplete->nama,
+            'nrpp' => $incomplete->nrpp,
+            'reason' => 'DOH belum diisi.',
+        ]]);
 
     expect(Paklaring::count())->toBe(1)
         ->and(Paklaring::sole()->nrpp)->toBe($ready->nrpp)
@@ -238,7 +247,8 @@ test('a site admin cannot batch create paklarings for another site\'s employees'
 
     $this->actingAs($userA)
         ->post(route('paklarings.batchStore'), batchPayload([$employeeB->id]))
-        ->assertRedirect(route('paklarings.index'));
+        ->assertRedirect(route('paklarings.createBatch'))
+        ->assertInertiaFlash('batchResult.created', []);
 
     expect(Paklaring::count())->toBe(0)
         ->and($employeeB->fresh()->is_active)->toBeTrue();
@@ -380,4 +390,31 @@ test('the public pdf download route no longer exists', function () {
     expect(Route::has('verify.download'))->toBeFalse();
 
     $this->get('/verify/'.$paklaring->verification_token.'/download')->assertNotFound();
+});
+
+test('batch store skips an employee whose letter number is missing and explains why', function () {
+    Storage::fake('local');
+
+    $site = Site::factory()->create(['code' => 'BAU']);
+    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
+    $withNumber = Employee::factory()->for($site, 'site')->create(['is_active' => true]);
+    $withoutNumber = Employee::factory()->for($site, 'site')->create(['is_active' => true]);
+
+    $payload = batchPayload([$withNumber->id]);
+    $payload['employee_ids'][] = $withoutNumber->id;
+
+    $this->actingAs($user)
+        ->post(route('paklarings.batchStore'), $payload)
+        ->assertRedirect(route('paklarings.createBatch'))
+        ->assertInertiaFlash('batchResult.skipped.0.reason', 'Nomor surat belum diisi.');
+
+    expect(Paklaring::count())->toBe(1)
+        ->and($withoutNumber->fresh()->is_active)->toBeTrue();
+});
+
+test('the skip reason lists every missing employee field in Indonesian', function () {
+    $employee = Employee::factory()->make(['tanggal_lahir' => null, 'classification' => '']);
+
+    expect($employee->paklaringMissingFields())->toBe(['tanggal lahir', 'classification akhir'])
+        ->and($employee->is_complete_for_paklaring)->toBeFalse();
 });

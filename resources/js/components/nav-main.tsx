@@ -8,6 +8,16 @@ export function NavMain({ groups }: { groups: ShellNavGroup[] }) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
     const { isMobile, setOpenMobile } = useSidebar();
 
+    // Only the most specific match is active, so /paklarings/create-batch
+    // lights up "Buat Batch" and not also "Daftar Paklaring".
+    const hrefOf = (href: ShellNavGroup['items'][number]['href']) =>
+        typeof href === 'string' ? href : href.url;
+    const activeHref = groups
+        .flatMap((g) => g.items)
+        .filter((item) => isCurrentOrParentUrl(item.href))
+        .map((item) => hrefOf(item.href))
+        .sort((a, b) => b.length - a.length)[0];
+
     return (
         <nav aria-label="Menu utama" className="flex flex-col gap-1">
             {groups.map((group, i) => (
@@ -18,7 +28,7 @@ export function NavMain({ groups }: { groups: ShellNavGroup[] }) {
                         </div>
                     )}
                     {group.items.map((item) => {
-                        const active = isCurrentOrParentUrl(item.href);
+                        const active = hrefOf(item.href) === activeHref;
 
                         return (
                             <Link

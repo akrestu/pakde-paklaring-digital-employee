@@ -67,16 +67,31 @@ class Employee extends Model
      */
     public function getIsCompleteForPaklaringAttribute(): bool
     {
-        return filled($this->tempat_lahir)
-            && $this->tanggal_lahir !== null
-            && filled($this->alamat)
-            && filled($this->project)
-            && filled($this->lokasi)
-            && filled($this->beginning_classification)
-            && filled($this->beginning_versatility)
-            && filled($this->classification)
-            && filled($this->versatility)
-            && $this->doh !== null;
+        return $this->paklaringMissingFields() === [];
+    }
+
+    /**
+     * Human-readable labels of the paklaring fields still empty for this
+     * employee, in form order. Empty when the employee is complete.
+     *
+     * @return list<string>
+     */
+    public function paklaringMissingFields(): array
+    {
+        $checks = [
+            'tempat lahir' => filled($this->tempat_lahir),
+            'tanggal lahir' => $this->tanggal_lahir !== null,
+            'alamat' => filled($this->alamat),
+            'project' => filled($this->project),
+            'lokasi' => filled($this->lokasi),
+            'beginning classification' => filled($this->beginning_classification),
+            'beginning versatility' => filled($this->beginning_versatility),
+            'classification akhir' => filled($this->classification),
+            'versatility akhir' => filled($this->versatility),
+            'DOH' => $this->doh !== null,
+        ];
+
+        return array_keys(array_filter($checks, fn (bool $ok) => ! $ok));
     }
 
     /**

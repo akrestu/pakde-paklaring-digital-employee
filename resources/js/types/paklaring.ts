@@ -36,6 +36,8 @@ export type Paklaring = {
     signing_tanggal: string;
     verification_token: string;
     file_path: string | null;
+    created_by?: number | null;
+    creator?: { id: number; name: string } | null;
     created_at: string;
     updated_at: string;
 };
@@ -68,5 +70,9 @@ export type PaginatedData<T> = {
     last_page: number;
     per_page: number;
     total: number;
+    from?: number | null;
+    to?: number | null;
+    prev_page_url?: string | null;
+    next_page_url?: string | null;
     links: { url: string | null; label: string; active: boolean }[];
 };

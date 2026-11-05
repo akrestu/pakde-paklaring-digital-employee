@@ -268,6 +268,27 @@ class EmployeeController extends Controller
     public function lookup(Request $request): JsonResponse
     {
         $user = $request->user();
+
+        // Combobox mode: partial match on NRPP or name, a handful of rows,
+        // still scoped to the Site Admin's own site.
+        if ($request->filled('q')) {
+            $term = trim((string) $request->query('q'));
+
+            $results = Employee::query()
+                ->with('site:id,name')
+                ->where(fn ($query) => $query
+                    ->where('nrpp', 'like', "%{$term}%")
+                    ->orWhere('nama', 'like', "%{$term}%"))
+                ->when(! $user->isSuperAdmin(), fn ($query) => $query->where('site_id', $user->site_id))
+                ->when($user->isSuperAdmin() && $request->filled('site_id'), fn ($query) => $query->where('site_id', $request->query('site_id')))
+                ->orderByDesc('is_active')
+                ->orderBy('nama')
+                ->limit(8)
+                ->get();
+
+            return response()->json(['results' => $results]);
+        }
+
         $nrpp = (string) $request->query('nrpp');
 
         $employee = Employee::query()

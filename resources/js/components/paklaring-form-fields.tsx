@@ -1,18 +1,13 @@
-import type { ChangeEvent, ReactNode } from 'react';
+import { CircleAlert, Search } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react';
+import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
-import type { Site } from '@/types';
+import { cn } from '@/lib/utils';
+import type { Employee, Site } from '@/types';
 
 export type PaklaringFormValues = {
     site_id: string;
@@ -58,25 +53,38 @@ export const emptyPaklaringFormValues: PaklaringFormValues = {
     signing_tanggal: new Date().toISOString().slice(0, 10),
 };
 
-/** Fields required to move past each wizard step (see StorePaklaringRequest). */
+/**
+ * Fields required to move past each wizard step (see StorePaklaringRequest),
+ * grouped as in `screens/PaklaringForm.html`. Every field is still posted.
+ */
 export const STEP_REQUIRED_FIELDS: Record<
     number,
     (keyof PaklaringFormValues)[]
 > = {
-    0: ['site_id', 'nrpp', 'nama', 'tempat_lahir', 'tanggal_lahir', 'alamat'],
-    1: [
+    0: [
+        'site_id',
+        'nrpp',
+        'nama',
+        'tempat_lahir',
+        'tanggal_lahir',
+        'alamat',
         'project',
         'lokasi',
-        'beginning_classification',
-        'beginning_versatility',
-        'final_classification',
-        'final_versatility',
     ],
-    2: ['doh', 'doe', 'alasan_phk'],
-    3: ['no_surat', 'signing_lokasi', 'signing_tanggal'],
+    1: [
+        'beginning_classification',
+        'final_classification',
+        'beginning_versatility',
+        'final_versatility',
+        'alasan_phk',
+        'doh',
+        'doe',
+    ],
+    2: ['signing_lokasi', 'signing_tanggal', 'no_surat'],
+    3: [],
 };
 
-type OnChange = <K extends keyof PaklaringFormValues>(
+export type OnChange = <K extends keyof PaklaringFormValues>(
     field: K,
     value: PaklaringFormValues[K],
 ) => void;
@@ -87,11 +95,16 @@ type SectionProps = {
     errors: Partial<Record<string, string>>;
 };
 
-function useField(values: PaklaringFormValues, onChange: OnChange) {
+function useField(
+    values: PaklaringFormValues,
+    onChange: OnChange,
+    errors: SectionProps['errors'],
+) {
     return <K extends keyof PaklaringFormValues>(name: K) => ({
         id: name,
         name,
         value: values[name],
+        'aria-invalid': errors[name] ? true : undefined,
         onChange: (
             event: ChangeEvent<
                 HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -100,375 +113,542 @@ function useField(values: PaklaringFormValues, onChange: OnChange) {
     });
 }
 
-function FieldLabel({
+export function Field({
+    label,
     htmlFor,
-    required = true,
+    error,
+    hint,
+    optional,
+    className,
     children,
 }: {
+    label: string;
     htmlFor: string;
-    required?: boolean;
+    error?: string;
+    hint?: string;
+    optional?: boolean;
+    className?: string;
     children: ReactNode;
 }) {
     return (
-        <Label htmlFor={htmlFor}>
+        <div className={cn('flex flex-col gap-1.5', className)}>
+            <label htmlFor={htmlFor} className="text-[13px] font-semibold">
+                {label}
+                {optional && (
+                    <span className="ml-1 font-normal text-muted-foreground">
+                        (opsional)
+                    </span>
+                )}
+            </label>
             {children}
-            {required ? (
-                <span className="ml-0.5 text-destructive">*</span>
-            ) : (
-                <span className="ml-1 font-normal text-muted-foreground">
-                    (opsional)
-                </span>
+            {hint && !error && (
+                <p className="text-xs text-muted-foreground">{hint}</p>
             )}
-        </Label>
+            <InputError message={error} />
+        </div>
     );
 }
 
-export function SiteKaryawanFields({
+const selectClass =
+    'h-[50px] w-full rounded-md border-2 border-transparent bg-input px-4 text-[15px] text-foreground outline-none focus-visible:border-foreground focus-visible:bg-card aria-invalid:border-destructive dark:focus-visible:border-accent';
+
+export function SectionTitle({ children }: { children: ReactNode }) {
+    return <h2 className="text-base font-bold">{children}</h2>;
+}
+
+/* ------------------------------------------------------------------ */
+/* Step 1 · Pilih karyawan                                             */
+/* ------------------------------------------------------------------ */
+
+export type LookupEmployee = Employee & { site?: Pick<Site, 'id' | 'name'> };
+
+function EmployeeCombobox({
+    siteId,
+    onPick,
+}: {
+    siteId: string;
+    onPick: (employee: LookupEmployee) => void;
+}) {
+    const listId = useId();
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<LookupEmployee[]>([]);
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [active, setActive] = useState(0);
+    const [picked, setPicked] = useState<number | null>(null);
+    const lastQuery = useRef('');
+
+    useEffect(() => {
+        const term = query.trim();
+
+        if (term.length < 2 || term === lastQuery.current) {
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            lastQuery.current = term;
+            setLoading(true);
+
+            try {
+                const response = await fetch(
+                    EmployeeController.lookup.url({
+                        query: siteId
+                            ? { q: term, site_id: siteId }
+                            : { q: term },
+                    }),
+                    { headers: { Accept: 'application/json' } },
+                );
+                const data = await response.json();
+                setResults(data.results ?? []);
+                setActive(0);
+                setOpen(true);
+            } catch {
+                setResults([]);
+            } finally {
+                setLoading(false);
+            }
+        }, 250);
+
+        return () => clearTimeout(timer);
+    }, [query, siteId]);
+
+    function pick(employee: LookupEmployee) {
+        const label = `${employee.nama} · ${employee.nrpp}`;
+        setPicked(employee.id);
+        setOpen(false);
+        setQuery(label);
+        lastQuery.current = label;
+        onPick(employee);
+    }
+
+    function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+        if (!open || results.length === 0) {
+            return;
+        }
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setActive((i) => (i + 1) % results.length);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            setActive((i) => (i - 1 + results.length) % results.length);
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            pick(results[active]);
+        } else if (event.key === 'Escape') {
+            setOpen(false);
+        }
+    }
+
+    const showList = open && query.trim().length >= 2;
+
+    return (
+        <div className="flex flex-col gap-2">
+            <label
+                htmlFor={`${listId}-input`}
+                className="text-[13px] font-semibold"
+            >
+                Cari karyawan
+            </label>
+            <span className="relative block">
+                <Search
+                    className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-muted-foreground"
+                    strokeWidth={1.8}
+                    aria-hidden
+                />
+                <Input
+                    id={`${listId}-input`}
+                    role="combobox"
+                    aria-expanded={showList}
+                    aria-controls={listId}
+                    aria-autocomplete="list"
+                    aria-activedescendant={
+                        showList && results[active]
+                            ? `${listId}-${results[active].id}`
+                            : undefined
+                    }
+                    autoComplete="off"
+                    autoFocus
+                    value={query}
+                    onChange={(e) => {
+                        setQuery(e.target.value);
+                        setPicked(null);
+                    }}
+                    onFocus={() => results.length > 0 && setOpen(true)}
+                    onKeyDown={onKeyDown}
+                    placeholder="Ketik NRPP atau nama"
+                    className="pl-11 text-[15px]"
+                />
+                {loading && (
+                    <Spinner className="absolute top-1/2 right-4 -translate-y-1/2 text-muted-foreground" />
+                )}
+            </span>
+
+            {showList && (
+                <div
+                    id={listId}
+                    role="listbox"
+                    aria-label="Hasil pencarian karyawan"
+                    className="overflow-hidden rounded-md border border-border"
+                >
+                    {results.length === 0 ? (
+                        <p className="px-4 py-3 text-sm text-muted-foreground">
+                            Tidak ada karyawan yang cocok. Isi data di bawah
+                            secara manual.
+                        </p>
+                    ) : (
+                        results.map((e, i) => (
+                            <button
+                                key={e.id}
+                                id={`${listId}-${e.id}`}
+                                type="button"
+                                role="option"
+                                aria-selected={picked === e.id}
+                                onMouseDown={(ev) => ev.preventDefault()}
+                                onClick={() => pick(e)}
+                                className={cn(
+                                    'flex w-full items-center justify-between gap-3 px-4 py-3 text-left',
+                                    i > 0 && 'border-t border-border',
+                                    i === active || picked === e.id
+                                        ? 'bg-accent-soft'
+                                        : 'bg-card hover:bg-muted',
+                                )}
+                            >
+                                <span className="flex min-w-0 flex-col">
+                                    <span className="truncate text-sm font-bold">
+                                        {e.nama}
+                                    </span>
+                                    <span className="tabular truncate text-xs text-muted-foreground">
+                                        NRPP {e.nrpp}
+                                        {e.site?.name ? ` · ${e.site.name}` : ''}
+                                        {!e.is_active ? ' · Nonaktif' : ''}
+                                    </span>
+                                </span>
+                                <span
+                                    className={cn(
+                                        'shrink-0 rounded-full px-2.5 py-1 text-xs font-bold',
+                                        e.is_complete_for_paklaring
+                                            ? 'bg-success-soft text-success'
+                                            : 'bg-warning-soft text-warning',
+                                    )}
+                                >
+                                    {e.is_complete_for_paklaring
+                                        ? 'Lengkap'
+                                        : 'Belum lengkap'}
+                                </span>
+                            </button>
+                        ))
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+export function KaryawanStep({
     values,
     onChange,
     errors,
     sites,
     lockedSite,
-    nrppLookup,
+    onPickEmployee,
+    pickedIncomplete,
 }: SectionProps & {
     sites: Site[];
     lockedSite?: Site | null;
-    nrppLookup?: { onSearch: () => void; loading: boolean };
+    /** Omit to hide the combobox (edit mode). */
+    onPickEmployee?: (employee: LookupEmployee) => void;
+    pickedIncomplete?: boolean;
 }) {
-    const field = useField(values, onChange);
+    const field = useField(values, onChange, errors);
 
     return (
-        <div className="space-y-6">
-            {/* NRPP is the primary reference for the whole form — it comes
-                first, and everything below follows from it. */}
-            <div className="space-y-2 rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
-                <FieldLabel htmlFor="nrpp">NRPP</FieldLabel>
-                <div className="flex gap-2">
-                    <Input
-                        {...field('nrpp')}
-                        autoFocus
-                        placeholder="Masukkan NRPP karyawan"
-                        className="bg-background"
+        <div className="flex flex-col gap-[18px]">
+            {lockedSite ? (
+                <input type="hidden" name="site_id" value={lockedSite.id} />
+            ) : (
+                <Field label="Site" htmlFor="site_id" error={errors.site_id}>
+                    <select {...field('site_id')} className={selectClass}>
+                        <option value="">Pilih site…</option>
+                        {sites.map((site) => (
+                            <option key={site.id} value={String(site.id)}>
+                                {site.name} ({site.code})
+                            </option>
+                        ))}
+                    </select>
+                </Field>
+            )}
+
+            {onPickEmployee && (
+                <EmployeeCombobox
+                    siteId={lockedSite ? String(lockedSite.id) : values.site_id}
+                    onPick={onPickEmployee}
+                />
+            )}
+
+            {pickedIncomplete && (
+                <div
+                    role="alert"
+                    className="flex items-start gap-2.5 rounded-md bg-warning-soft px-4 py-3 text-sm font-medium text-warning"
+                >
+                    <CircleAlert
+                        className="mt-0.5 size-[18px] shrink-0"
+                        strokeWidth={1.8}
+                        aria-hidden
                     />
-                    {nrppLookup && (
-                        <Button
-                            type="button"
-                            onClick={nrppLookup.onSearch}
-                            disabled={nrppLookup.loading || !values.nrpp}
-                            className="shrink-0"
-                        >
-                            {nrppLookup.loading && <Spinner />}
-                            {nrppLookup.loading ? 'Mencari…' : 'Cari'}
-                        </Button>
+                    <span>
+                        Data karyawan ini belum lengkap. Isi kolom yang masih
+                        kosong di bawah dan pada langkah berikutnya.
+                    </span>
+                </div>
+            )}
+
+            <div className="flex flex-col gap-3.5 rounded-lg border border-border p-4 md:p-5">
+                <div className="flex flex-col gap-0.5">
+                    <h2 className="text-sm font-bold">Data karyawan</h2>
+                    {onPickEmployee && (
+                        <p className="text-xs text-muted-foreground">
+                            Terisi otomatis dari data karyawan. Ubah bila perlu.
+                        </p>
                     )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                    {nrppLookup
-                        ? 'Klik Cari — site, nama, dan kolom lain di bawah akan otomatis terisi dari data karyawan.'
-                        : 'Kolom lain mengikuti data karyawan dengan NRPP ini.'}
-                </p>
-                <InputError message={errors.nrpp} />
-            </div>
-
-            <div className="grid gap-2">
-                {lockedSite ? (
-                    <>
-                        <Label>Site</Label>
-                        <Input value={lockedSite.name} disabled />
-                        <input
-                            type="hidden"
-                            name="site_id"
-                            value={lockedSite.id}
-                        />
-                    </>
-                ) : (
-                    <>
-                        <FieldLabel htmlFor="site_id">Site</FieldLabel>
-                        <Select
-                            value={values.site_id}
-                            onValueChange={(value) =>
-                                onChange('site_id', value)
-                            }
-                        >
-                            <SelectTrigger id="site_id" className="w-full">
-                                <SelectValue placeholder="Pilih site…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sites.map((site) => (
-                                    <SelectItem
-                                        key={site.id}
-                                        value={String(site.id)}
-                                    >
-                                        {site.name} ({site.code})
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <input
-                            type="hidden"
-                            name="site_id"
-                            value={values.site_id}
-                        />
-                        <InputError message={errors.site_id} />
-                    </>
-                )}
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                    <FieldLabel htmlFor="nama">Nama</FieldLabel>
-                    <Input {...field('nama')} />
-                    <InputError message={errors.nama} />
-                </div>
-
-                <div className="grid gap-2">
-                    <FieldLabel htmlFor="tempat_lahir">Tempat Lahir</FieldLabel>
-                    <Input {...field('tempat_lahir')} />
-                    <InputError message={errors.tempat_lahir} />
-                </div>
-
-                <div className="grid gap-2">
-                    <FieldLabel htmlFor="tanggal_lahir">
-                        Tanggal Lahir
-                    </FieldLabel>
-                    <Input type="date" {...field('tanggal_lahir')} />
-                    <InputError message={errors.tanggal_lahir} />
-                </div>
-
-                <div className="col-span-full grid gap-2">
-                    <FieldLabel htmlFor="alamat">Alamat</FieldLabel>
-                    <Textarea {...field('alamat')} />
-                    <InputError message={errors.alamat} />
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                    <Field label="NRPP" htmlFor="nrpp" error={errors.nrpp}>
+                        <Input {...field('nrpp')} className="tabular" />
+                    </Field>
+                    <Field label="Nama" htmlFor="nama" error={errors.nama}>
+                        <Input {...field('nama')} />
+                    </Field>
+                    <Field
+                        label="Tempat lahir"
+                        htmlFor="tempat_lahir"
+                        error={errors.tempat_lahir}
+                    >
+                        <Input {...field('tempat_lahir')} />
+                    </Field>
+                    <Field
+                        label="Tanggal lahir"
+                        htmlFor="tanggal_lahir"
+                        error={errors.tanggal_lahir}
+                    >
+                        <Input type="date" {...field('tanggal_lahir')} />
+                    </Field>
+                    <Field
+                        label="Alamat"
+                        htmlFor="alamat"
+                        error={errors.alamat}
+                        className="sm:col-span-2"
+                    >
+                        <Textarea {...field('alamat')} rows={2} />
+                    </Field>
+                    <Field
+                        label="Project"
+                        htmlFor="project"
+                        error={errors.project}
+                    >
+                        <Input {...field('project')} />
+                    </Field>
+                    <Field label="Lokasi" htmlFor="lokasi" error={errors.lokasi}>
+                        <Input {...field('lokasi')} />
+                    </Field>
                 </div>
             </div>
         </div>
     );
 }
 
-export function ProjekKlasifikasiFields({
-    values,
-    onChange,
-    errors,
-}: SectionProps) {
-    const field = useField(values, onChange);
+/* ------------------------------------------------------------------ */
+/* Step 2 · Data kerja & alasan                                         */
+/* ------------------------------------------------------------------ */
 
-    return (
-        <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="project">Project</FieldLabel>
-                <Input {...field('project')} />
-                <InputError message={errors.project} />
-            </div>
-
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="lokasi">Lokasi Proyek</FieldLabel>
-                <Input {...field('lokasi')} />
-                <InputError message={errors.lokasi} />
-            </div>
-
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="beginning_classification">
-                    Beginning Classification
-                </FieldLabel>
-                <Input {...field('beginning_classification')} />
-                <InputError message={errors.beginning_classification} />
-            </div>
-
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="beginning_versatility">
-                    Beginning Versatility
-                </FieldLabel>
-                <Input {...field('beginning_versatility')} />
-                <InputError message={errors.beginning_versatility} />
-            </div>
-
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="final_classification">
-                    Final Classification
-                </FieldLabel>
-                <Input {...field('final_classification')} />
-                <InputError message={errors.final_classification} />
-            </div>
-
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="final_versatility">
-                    Final Versatility
-                </FieldLabel>
-                <Input {...field('final_versatility')} />
-                <InputError message={errors.final_versatility} />
-            </div>
-        </div>
-    );
-}
-
-export function MasaKerjaFields({
+export function DataKerjaStep({
     values,
     onChange,
     errors,
     alasanPhkOptions,
 }: SectionProps & { alasanPhkOptions: string[] }) {
-    const field = useField(values, onChange);
-    const dateOrderInvalid =
-        values.doh && values.doe && values.doe < values.doh;
+    const field = useField(values, onChange, errors);
+    const dateOrderInvalid = Boolean(
+        values.doh && values.doe && values.doe < values.doh,
+    );
 
     return (
-        <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="doh">DOH (Date of Hire)</FieldLabel>
-                <Input type="date" {...field('doh')} />
-                <InputError message={errors.doh} />
+        <div className="flex flex-col gap-[18px]">
+            <div className="grid gap-3.5 sm:grid-cols-2">
+                <Field
+                    label="Beginning classification"
+                    htmlFor="beginning_classification"
+                    error={errors.beginning_classification}
+                >
+                    <Input {...field('beginning_classification')} />
+                </Field>
+                <Field
+                    label="Final classification"
+                    htmlFor="final_classification"
+                    error={errors.final_classification}
+                >
+                    <Input {...field('final_classification')} />
+                </Field>
+                <Field
+                    label="Beginning versatility"
+                    htmlFor="beginning_versatility"
+                    error={errors.beginning_versatility}
+                >
+                    <Input {...field('beginning_versatility')} />
+                </Field>
+                <Field
+                    label="Final versatility"
+                    htmlFor="final_versatility"
+                    error={errors.final_versatility}
+                >
+                    <Input {...field('final_versatility')} />
+                </Field>
             </div>
 
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="doe">DOE (Date of End)</FieldLabel>
-                <Input type="date" {...field('doe')} />
-                <InputError
-                    message={
+            <fieldset className="flex flex-col gap-2">
+                <legend className="mb-2 text-[13px] font-semibold">
+                    Alasan PHK
+                </legend>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                    {alasanPhkOptions.map((option) => {
+                        const on = values.alasan_phk === option;
+
+                        return (
+                            <label
+                                key={option}
+                                className={cn(
+                                    'flex min-h-[52px] cursor-pointer items-center gap-2.5 rounded-md px-3.5 text-sm font-semibold transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
+                                    on
+                                        ? 'border-2 border-primary bg-accent-soft'
+                                        : 'border border-border bg-card hover:bg-muted',
+                                )}
+                            >
+                                <input
+                                    type="radio"
+                                    name="alasan_phk"
+                                    value={option}
+                                    checked={on}
+                                    onChange={() =>
+                                        onChange('alasan_phk', option)
+                                    }
+                                    className="size-[18px] accent-[var(--primary)]"
+                                />
+                                {option}
+                            </label>
+                        );
+                    })}
+                </div>
+                <InputError message={errors.alasan_phk} />
+            </fieldset>
+
+            <div className="grid gap-3.5 sm:grid-cols-2">
+                <Field
+                    label="DOH (tanggal masuk)"
+                    htmlFor="doh"
+                    error={errors.doh}
+                >
+                    <Input type="date" {...field('doh')} className="tabular" />
+                </Field>
+                <Field
+                    label="DOE (tanggal keluar)"
+                    htmlFor="doe"
+                    error={
                         errors.doe ??
                         (dateOrderInvalid
                             ? 'DOE tidak boleh sebelum DOH.'
                             : undefined)
                     }
-                />
-            </div>
-
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="alasan_phk">Alasan PHK</FieldLabel>
-                <Select
-                    value={values.alasan_phk}
-                    onValueChange={(value) => onChange('alasan_phk', value)}
                 >
-                    <SelectTrigger id="alasan_phk" className="w-full">
-                        <SelectValue placeholder="Pilih alasan…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {alasanPhkOptions.map((option) => (
-                            <SelectItem key={option} value={option}>
-                                {option}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <input
-                    type="hidden"
-                    name="alasan_phk"
-                    value={values.alasan_phk}
-                />
-                <InputError message={errors.alasan_phk} />
+                    <Input
+                        type="date"
+                        {...field('doe')}
+                        aria-invalid={
+                            errors.doe || dateOrderInvalid ? true : undefined
+                        }
+                        className="tabular"
+                    />
+                </Field>
             </div>
 
-            <div className="col-span-full grid gap-2">
-                <FieldLabel htmlFor="remarks" required={false}>
-                    Remarks / Keterangan
-                </FieldLabel>
-                <Textarea {...field('remarks')} />
-                <InputError message={errors.remarks} />
-            </div>
+            <Field
+                label="Remarks"
+                htmlFor="remarks"
+                error={errors.remarks}
+                optional
+            >
+                <Textarea {...field('remarks')} rows={3} />
+            </Field>
         </div>
     );
 }
 
-export function TandaTanganFields({ values, onChange, errors }: SectionProps) {
-    const field = useField(values, onChange);
+/* ------------------------------------------------------------------ */
+/* Step 3 · Tanda tangan & no. surat                                    */
+/* ------------------------------------------------------------------ */
 
-    return (
-        <div className="grid gap-4 sm:grid-cols-2">
-            <div className="col-span-full grid gap-2">
-                <FieldLabel htmlFor="no_surat">Nomor Surat</FieldLabel>
-                <Input
-                    {...field('no_surat')}
-                    placeholder="Contoh: WBK-BAU-HRGA-2026-VIII-0001"
-                />
-                <p className="text-xs text-muted-foreground">
-                    Diisi manual sesuai buku register paklaring.
-                </p>
-                <InputError message={errors.no_surat} />
-            </div>
-
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="signing_lokasi">
-                    Lokasi Tanda Tangan
-                </FieldLabel>
-                <Input {...field('signing_lokasi')} />
-                <InputError message={errors.signing_lokasi} />
-            </div>
-
-            <div className="grid gap-2">
-                <FieldLabel htmlFor="signing_tanggal">Tanggal Surat</FieldLabel>
-                <Input type="date" {...field('signing_tanggal')} />
-                <InputError message={errors.signing_tanggal} />
-            </div>
-        </div>
-    );
-}
-
-/**
- * Flat, single-page rendering of every section — used by the edit form,
- * where a wizard would get in the way of jumping straight to one field.
- */
-export function PaklaringFormFields({
+export function TandaTanganStep({
     values,
     onChange,
-    sites,
-    lockedSite,
     errors,
-    nrppLookup,
-    alasanPhkOptions,
-}: SectionProps & {
-    sites: Site[];
-    lockedSite?: Site | null;
-    nrppLookup?: { onSearch: () => void; loading: boolean };
-    alasanPhkOptions: string[];
-}) {
+    site,
+}: SectionProps & { site?: Site | null }) {
+    const field = useField(values, onChange, errors);
+    const signer = [site?.signer_name, site?.signer_title]
+        .filter(Boolean)
+        .join(' · ');
+
     return (
-        <div className="space-y-8">
-            <section className="space-y-4">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                    Site / Lokasi Kerja &amp; Data Karyawan
-                </h3>
-                <SiteKaryawanFields
-                    values={values}
-                    onChange={onChange}
-                    errors={errors}
-                    sites={sites}
-                    lockedSite={lockedSite}
-                    nrppLookup={nrppLookup}
-                />
-            </section>
+        <div className="flex flex-col gap-[18px]">
+            <SectionTitle>Penandatanganan</SectionTitle>
+            <div className="grid gap-3.5 sm:grid-cols-2">
+                <Field
+                    label="Lokasi penandatanganan"
+                    htmlFor="signing_lokasi"
+                    error={errors.signing_lokasi}
+                >
+                    <Input {...field('signing_lokasi')} />
+                </Field>
+                <Field
+                    label="Tanggal penandatanganan"
+                    htmlFor="signing_tanggal"
+                    error={errors.signing_tanggal}
+                >
+                    <Input
+                        type="date"
+                        {...field('signing_tanggal')}
+                        className="tabular"
+                    />
+                </Field>
+            </div>
 
-            <section className="space-y-4">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                    Project &amp; Klasifikasi
-                </h3>
-                <ProjekKlasifikasiFields
-                    values={values}
-                    onChange={onChange}
-                    errors={errors}
-                />
-            </section>
+            <div className="flex items-center gap-3 rounded-md bg-muted/60 px-4 py-3">
+                <span className="flex min-w-0 flex-col">
+                    <span className="text-sm font-bold">
+                        {signer || 'Penandatangan belum diatur'}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        {site
+                            ? `Penandatangan dari data ${site.name}`
+                            : 'Pilih site pada langkah 1'}
+                    </span>
+                </span>
+            </div>
 
-            <section className="space-y-4">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                    Masa Kerja &amp; Pemberhentian
-                </h3>
-                <MasaKerjaFields
-                    values={values}
-                    onChange={onChange}
-                    errors={errors}
-                    alasanPhkOptions={alasanPhkOptions}
-                />
-            </section>
+            <div className="h-px bg-border" />
 
-            <section className="space-y-4">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                    Tanda Tangan Surat
-                </h3>
-                <TandaTanganFields
-                    values={values}
-                    onChange={onChange}
-                    errors={errors}
+            <SectionTitle>No. surat</SectionTitle>
+            <Field
+                label="Nomor surat"
+                htmlFor="no_surat"
+                error={errors.no_surat}
+                hint="Diisi manual sesuai buku register paklaring."
+            >
+                <Input
+                    {...field('no_surat')}
+                    placeholder="Ketik nomor surat"
+                    className="tabular"
                 />
-            </section>
+            </Field>
         </div>
     );
 }

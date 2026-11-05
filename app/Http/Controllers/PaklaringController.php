@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\Paklaring;
 use App\Models\Site;
 use App\Services\PaklaringPdfService;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,7 +41,7 @@ class PaklaringController extends Controller
             : (int) $perPageParam;
 
         $paklarings = $this->scopedQuery($request)
-            ->with('site')
+            ->with(['site', 'creator:id,name'])
             ->latest('signing_tanggal')
             ->paginate($perPage)
             ->withQueryString();
@@ -48,7 +49,8 @@ class PaklaringController extends Controller
         return Inertia::render('paklarings/index', [
             'paklarings' => $paklarings,
             'sites' => $user->isSuperAdmin() ? Site::orderBy('name')->get(['id', 'name']) : [],
-            'filters' => $request->only(['search', 'site_id']),
+            'filters' => $request->only(['search', 'site_id', 'alasan_phk', 'date_from', 'date_to']),
+            'alasanPhkOptions' => Paklaring::ALASAN_PHK_OPTIONS,
             'perPage' => $perPageParam,
             'stats' => [
                 'thisMonth' => $this->scopedQuery($request)
@@ -78,7 +80,30 @@ class PaklaringController extends Controller
                         ->orWhere('nrpp', 'like', "%{$search}%")
                         ->orWhere('no_surat', 'like', "%{$search}%");
                 });
-            });
+            })
+            ->when(
+                in_array($request->input('alasan_phk'), Paklaring::ALASAN_PHK_OPTIONS, true),
+                fn ($query) => $query->where('alasan_phk', $request->input('alasan_phk')),
+            )
+            ->when($this->dateParam($request, 'date_from'), fn ($query, Carbon $from) => $query->where('created_at', '>=', $from->startOfDay()))
+            ->when($this->dateParam($request, 'date_to'), fn ($query, Carbon $to) => $query->where('created_at', '<=', $to->endOfDay()));
+    }
+
+    /**
+     * A `Y-m-d` filter value, or null when absent or malformed — a bad date
+     * in the URL just drops that filter instead of erroring the list page.
+     */
+    private function dateParam(Request $request, string $key): ?Carbon
+    {
+        $value = $request->input($key);
+
+        if (! is_string($value) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return null;
+        }
+
+        $date = Carbon::createFromFormat('!Y-m-d', $value);
+
+        return $date && $date->format('Y-m-d') === $value ? $date : null;
     }
 
     public function create(Request $request): Response

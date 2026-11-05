@@ -272,3 +272,68 @@ test('public verification page confirms a valid token and rejects an unknown one
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('valid', false));
 });
+
+test('the index can be filtered by termination reason', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_SUPER_ADMIN, 'site_id' => null]);
+    Paklaring::factory()->count(2)->create(['alasan_phk' => 'Resign']);
+    Paklaring::factory()->create(['alasan_phk' => 'PHK']);
+
+    $this->actingAs($admin)
+        ->get(route('paklarings.index', ['alasan_phk' => 'Resign']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->has('paklarings.data', 2)
+            ->where('filters.alasan_phk', 'Resign')
+            ->where('paklarings.data.0.alasan_phk', 'Resign')
+        );
+});
+
+test('an unknown termination reason filter is ignored', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_SUPER_ADMIN, 'site_id' => null]);
+    Paklaring::factory()->count(3)->create();
+
+    $this->actingAs($admin)
+        ->get(route('paklarings.index', ['alasan_phk' => 'Bukan Alasan']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->has('paklarings.data', 3));
+});
+
+test('the index can be filtered by a created date range, inclusive of both ends', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_SUPER_ADMIN, 'site_id' => null]);
+    Paklaring::factory()->create(['created_at' => '2026-09-30 23:59:00']);
+    Paklaring::factory()->create(['created_at' => '2026-10-01 00:00:00']);
+    Paklaring::factory()->create(['created_at' => '2026-10-31 23:59:00']);
+    Paklaring::factory()->create(['created_at' => '2026-11-01 00:00:00']);
+
+    $this->actingAs($admin)
+        ->get(route('paklarings.index', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->has('paklarings.data', 2)
+            ->where('filters.date_from', '2026-10-01')
+        );
+
+    $this->actingAs($admin)
+        ->get(route('paklarings.index', ['date_from' => '2026-11-01']))
+        ->assertInertia(fn ($page) => $page->has('paklarings.data', 1));
+});
+
+test('a malformed date filter is ignored instead of failing the page', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_SUPER_ADMIN, 'site_id' => null]);
+    Paklaring::factory()->count(2)->create();
+
+    $this->actingAs($admin)
+        ->get(route('paklarings.index', ['date_from' => '2026-13-45', 'date_to' => 'kemarin']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->has('paklarings.data', 2));
+});
+
+test('filters never widen a site admin beyond their own site', function () {
+    $siteA = Site::factory()->create();
+    $siteB = Site::factory()->create();
+    $userA = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $siteA->id]);
+    Paklaring::factory()->for($siteA, 'site')->create(['alasan_phk' => 'Resign']);
+    Paklaring::factory()->for($siteB, 'site')->count(2)->create(['alasan_phk' => 'Resign']);
+
+    $this->actingAs($userA)
+        ->get(route('paklarings.index', ['alasan_phk' => 'Resign', 'site_id' => $siteB->id]))
+        ->assertInertia(fn ($page) => $page->has('paklarings.data', 1));
+});

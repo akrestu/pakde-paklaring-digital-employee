@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import type { LabelProps } from 'recharts';
+import { ReasonBadge } from '@/components/reason-badge';
 import { useAppearance } from '@/hooks/use-appearance';
 import { alasanStyle } from '@/lib/alasan-phk';
 import { cn } from '@/lib/utils';
@@ -421,19 +422,6 @@ function ReasonChart({ data }: { data: ReasonTotal[] }) {
                 })}
             </ul>
         </section>
-    );
-}
-
-function ReasonBadge({ reason }: { reason: string }) {
-    return (
-        <span
-            className={cn(
-                'rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap',
-                alasanStyle(reason).badge,
-            )}
-        >
-            {reason}
-        </span>
     );
 }
 

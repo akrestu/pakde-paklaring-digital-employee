@@ -267,3 +267,35 @@ test('a site admin cannot bulk delete employees belonging to another site', func
 
     expect(Employee::find($employeeB->id))->not->toBeNull();
 });
+
+test('employee lookup search matches nrpp or name and stays scoped to the site admin site', function () {
+    $site = Site::factory()->create();
+    $otherSite = Site::factory()->create();
+    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
+
+    Employee::factory()->for($site, 'site')->create(['nrpp' => '2305118', 'nama' => 'Budi Santoso']);
+    Employee::factory()->for($site, 'site')->create(['nrpp' => '1811207', 'nama' => 'Agus Wibowo']);
+    Employee::factory()->for($otherSite, 'site')->create(['nrpp' => '2305999', 'nama' => 'Budi Lain Site']);
+
+    $this->actingAs($user)
+        ->getJson(route('employees.lookup', ['q' => 'budi']))
+        ->assertOk()
+        ->assertJsonCount(1, 'results')
+        ->assertJsonPath('results.0.nama', 'Budi Santoso')
+        ->assertJsonStructure(['results' => [['nrpp', 'nama', 'is_complete_for_paklaring', 'site' => ['name']]]]);
+
+    $this->actingAs($user)
+        ->getJson(route('employees.lookup', ['q' => '2305']))
+        ->assertJsonCount(1, 'results')
+        ->assertJsonPath('results.0.nrpp', '2305118');
+});
+
+test('employee lookup search caps the number of results', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_SUPER_ADMIN, 'site_id' => null]);
+    Employee::factory()->count(12)->create(['nama' => 'Karyawan Contoh']);
+
+    $this->actingAs($admin)
+        ->getJson(route('employees.lookup', ['q' => 'Contoh']))
+        ->assertOk()
+        ->assertJsonCount(8, 'results');
+});

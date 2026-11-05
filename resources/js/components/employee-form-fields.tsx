@@ -21,7 +21,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
     return (
         <section className={cn(card, 'flex flex-col gap-4 p-4 md:p-6')}>
             <h2 className="text-base font-bold">{title}</h2>
-            <div className="grid gap-3.5 sm:grid-cols-2">{children}</div>
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">{children}</div>
         </section>
     );
 }

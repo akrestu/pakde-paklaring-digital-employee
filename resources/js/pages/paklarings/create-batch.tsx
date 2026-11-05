@@ -584,7 +584,7 @@ export default function CreateBatch({
                                 })}
                             </div>
                         </fieldset>
-                        <div className="grid gap-3.5 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                             <Field
                                 label="DOE (tanggal keluar)"
                                 htmlFor="doe"

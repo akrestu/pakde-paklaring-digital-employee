@@ -412,7 +412,7 @@ export function KaryawanStep({
                         </p>
                     )}
                 </div>
-                <div className="grid gap-3.5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                     <Field label="NRPP" htmlFor="nrpp" error={errors.nrpp}>
                         <Input {...field('nrpp')} className="tabular" />
                     </Field>
@@ -474,7 +474,7 @@ export function DataKerjaStep({
 
     return (
         <div className="flex flex-col gap-[18px]">
-            <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <Field
                     label="Beginning classification"
                     htmlFor="beginning_classification"
@@ -541,7 +541,7 @@ export function DataKerjaStep({
                 <InputError message={errors.alasan_phk} />
             </fieldset>
 
-            <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <Field
                     label="DOH (tanggal masuk)"
                     htmlFor="doh"
@@ -600,7 +600,7 @@ export function TandaTanganStep({
     return (
         <div className="flex flex-col gap-[18px]">
             <SectionTitle>Penandatanganan</SectionTitle>
-            <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <Field
                     label="Lokasi penandatanganan"
                     htmlFor="signing_lokasi"

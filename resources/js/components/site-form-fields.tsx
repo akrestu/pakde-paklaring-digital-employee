@@ -23,7 +23,7 @@ export function SiteFormFields({
 
     return (
         <div className="flex flex-col gap-3.5">
-            <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <Field
                     label="Kode"
                     htmlFor="code"
@@ -58,7 +58,7 @@ export function SiteFormFields({
                     required
                 />
             </Field>
-            <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <Field
                     label="Project default"
                     htmlFor="default_project"

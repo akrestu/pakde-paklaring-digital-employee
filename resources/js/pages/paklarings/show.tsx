@@ -206,7 +206,7 @@ export default function Show({
                     </div>
                 </div>
 
-                <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-5">
+                <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-5">
                     <section
                         aria-label="Pratinjau surat"
                         className={cn(card, 'overflow-hidden p-2 md:p-3')}

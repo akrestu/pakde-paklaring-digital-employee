@@ -433,7 +433,7 @@ export default function Import({ sites }: { sites: Site[] }) {
 
                 {step === 2 && result && (
                     <>
-                        <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                             {resultTiles.map(([label, value, color]) => (
                                 <div
                                     key={label}

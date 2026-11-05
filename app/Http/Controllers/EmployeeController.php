@@ -7,6 +7,7 @@ use App\Http\Requests\Employees\StoreEmployeeRequest;
 use App\Http\Requests\Employees\UpdateEmployeeRequest;
 use App\Models\Employee;
 use App\Models\Site;
+use App\Services\EmployeeImportRow;
 use App\Services\EmployeeImportService;
 use App\Services\EmployeeSpreadsheetService;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,6 +23,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class EmployeeController extends Controller
 {
     /** Selectable page sizes for the index table; "all" shows every row on one page. */
+    /** Rows shown on the import preview; the counts always cover the whole file. */
+    private const PREVIEW_ROW_LIMIT = 200;
+
     private const PER_PAGE_OPTIONS = ['15', '50', '100', 'all'];
 
     public function index(Request $request): InertiaResponse
@@ -48,11 +52,12 @@ class EmployeeController extends Controller
         return Inertia::render('employees/index', [
             'employees' => $employees,
             'sites' => $user->isSuperAdmin() ? Site::orderBy('name')->get(['id', 'name']) : [],
-            'filters' => $request->only(['search', 'site_id']),
+            'filters' => $request->only(['search', 'site_id', 'kelengkapan', 'status']),
             'perPage' => $perPageParam,
             'stats' => [
                 'active' => $this->scopedQuery($request)->where('is_active', true)->count(),
                 'inactive' => $this->scopedQuery($request)->where('is_active', false)->count(),
+                'incomplete' => $this->scopedQuery($request)->incompleteForPaklaring()->count(),
             ],
         ]);
     }
@@ -74,7 +79,11 @@ class EmployeeController extends Controller
                     $query->where('nama', 'like', "%{$search}%")
                         ->orWhere('nrpp', 'like', "%{$search}%");
                 });
-            });
+            })
+            ->when($request->input('kelengkapan') === 'lengkap', fn ($query) => $query->completeForPaklaring())
+            ->when($request->input('kelengkapan') === 'belum', fn ($query) => $query->incompleteForPaklaring())
+            ->when($request->input('status') === 'aktif', fn ($query) => $query->where('is_active', true))
+            ->when($request->input('status') === 'nonaktif', fn ($query) => $query->where('is_active', false));
     }
 
     public function create(Request $request): InertiaResponse
@@ -198,37 +207,64 @@ class EmployeeController extends Controller
         ]);
     }
 
+    /**
+     * Read the uploaded file and report what an import would do, without
+     * saving anything. Uses the exact same row rules as import().
+     */
+    public function importPreview(ImportEmployeesRequest $request, EmployeeImportService $importService): RedirectResponse
+    {
+        $this->authorize('create', Employee::class);
+
+        $plan = $importService->plan($request->file('file'), $request->user(), $this->importDefaultSite($request));
+        $count = fn (string $status) => count(array_filter($plan, fn (EmployeeImportRow $row) => $row->status === $status));
+
+        Inertia::flash('importPreview', [
+            'file_name' => $request->file('file')->getClientOriginalName(),
+            'counts' => [
+                'new' => $count(EmployeeImportRow::STATUS_NEW),
+                'update' => $count(EmployeeImportRow::STATUS_UPDATE),
+                'skip' => $count(EmployeeImportRow::STATUS_SKIP),
+            ],
+            'rows' => array_map(fn (EmployeeImportRow $row) => [
+                'row' => $row->rowNumber,
+                'nrpp' => $row->attributes['nrpp'] ?? null,
+                'nama' => $row->attributes['nama'] ?? null,
+                'site' => $row->site?->name,
+                'doh' => $row->attributes['doh'] ?? null,
+                'status' => $row->status,
+                'message' => $row->message,
+            ], array_slice($plan, 0, self::PREVIEW_ROW_LIMIT)),
+            'truncated' => count($plan) > self::PREVIEW_ROW_LIMIT,
+        ]);
+
+        return to_route('employees.import.form');
+    }
+
     public function import(ImportEmployeesRequest $request, EmployeeImportService $importService): RedirectResponse
     {
         $this->authorize('create', Employee::class);
 
+        $result = $importService->import($request->file('file'), $request->user(), $this->importDefaultSite($request));
+
+        // The import page renders its result screen from this flash.
+        Inertia::flash('importResult', [
+            'created' => $result->created,
+            'updated' => $result->updated,
+            'skipped' => $result->skipped,
+        ]);
+
+        return to_route('employees.import.form');
+    }
+
+    private function importDefaultSite(Request $request): ?Site
+    {
         $user = $request->user();
 
-        $defaultSite = match (true) {
+        return match (true) {
             $request->filled('site_id') => Site::find((int) $request->input('site_id')),
             ! $user->isSuperAdmin() => $user->site,
             default => null,
         };
-
-        $result = $importService->import($request->file('file'), $user, $defaultSite);
-
-        $summary = "Import selesai: {$result->created} baru, {$result->updated} diperbarui".
-            ($result->skipped !== [] ? ', '.count($result->skipped).' baris dilewati.' : '.');
-
-        if ($result->skipped !== []) {
-            $summary .= ' '.implode(' ', array_slice($result->skipped, 0, 5));
-
-            if (count($result->skipped) > 5) {
-                $summary .= ' (dan '.(count($result->skipped) - 5).' lainnya)';
-            }
-        }
-
-        Inertia::flash('toast', [
-            'type' => $result->skipped === [] ? 'success' : 'error',
-            'message' => $summary,
-        ]);
-
-        return to_route('employees.index');
     }
 
     public function template(EmployeeSpreadsheetService $spreadsheetService): StreamedResponse

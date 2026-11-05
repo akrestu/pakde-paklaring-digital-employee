@@ -1,24 +1,17 @@
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
-    FileDown,
-    FileUp,
-    MoreHorizontal,
+    Download,
     Pencil,
     Plus,
     Search,
     Trash2,
-    UserCheck,
+    Upload,
     Users,
-    UserX,
-    X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
-import Heading from '@/components/heading';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
@@ -27,46 +20,59 @@ import {
     DialogFooter,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Spinner } from '@/components/ui/spinner';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { useInitials } from '@/hooks/use-initials';
+import { cn } from '@/lib/utils';
 import type { Auth, Employee, PaginatedData, Site } from '@/types';
 
-function decodeLabel(label: string): string {
-    return label
-        .replace(/&laquo;\s*/i, '')
-        .replace(/\s*&raquo;/i, '')
-        .trim();
+type Filters = {
+    search?: string;
+    site_id?: string;
+    kelengkapan?: string;
+    status?: string;
+};
+
+const nf = new Intl.NumberFormat('id-ID');
+const dateShort = new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+});
+const formatDate = (value: string | null | undefined) =>
+    value ? dateShort.format(new Date(`${value.slice(0, 10)}T00:00:00`)) : '–';
+
+const card = 'rounded-lg bg-card shadow-[0_1px_2px_oklch(0.191_0_0/0.06)]';
+const control =
+    'h-11 w-full min-w-0 rounded-md border-2 border-transparent bg-input px-3 text-sm font-medium text-foreground outline-none focus-visible:border-foreground dark:focus-visible:border-accent';
+const GRID =
+    'grid grid-cols-[44px_100px_minmax(150px,1.3fr)_minmax(110px,1fr)_minmax(100px,0.8fr)_minmax(110px,0.9fr)_100px_118px_92px_44px] items-center gap-2 px-3';
+
+function CompletePill({ ok }: { ok: boolean }) {
+    return (
+        <span
+            className={cn(
+                'inline-block rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap',
+                ok
+                    ? 'bg-success-soft text-success'
+                    : 'bg-warning-soft text-warning',
+            )}
+        >
+            {ok ? 'Lengkap' : 'Belum lengkap'}
+        </span>
+    );
+}
+
+function StatusPill({ active }: { active: boolean }) {
+    return (
+        <span
+            className={cn(
+                'inline-block rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap',
+                active
+                    ? 'bg-info-soft text-info'
+                    : 'bg-muted text-muted-foreground',
+            )}
+        >
+            {active ? 'Aktif' : 'Nonaktif'}
+        </span>
+    );
 }
 
 export default function Index({
@@ -77,53 +83,51 @@ export default function Index({
     perPage,
 }: {
     employees: PaginatedData<Employee>;
-    sites: Site[];
-    filters: { search?: string; site_id?: string };
-    stats: { active: number; inactive: number };
+    sites: Pick<Site, 'id' | 'name'>[];
+    filters: Filters;
+    stats: { active: number; inactive: number; incomplete: number };
     perPage: string;
 }) {
-    const {
-        props: { auth },
-    } = usePage<{ auth: Auth }>();
-    const getInitials = useInitials();
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const isSuperAdmin = auth.user.role === 'super_admin';
 
-    const [siteFilter, setSiteFilter] = useState(filters.site_id ?? 'all');
-    const [perPageValue, setPerPageValue] = useState(perPage);
-    const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+    const [search, setSearch] = useState(filters.search ?? '');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
     const [bulkProcessing, setBulkProcessing] = useState(false);
 
-    // Any navigation (pagination, filtering, a delete) loads a new page of
-    // results, so a stale selection should not carry over across it.
     useEffect(() => router.on('success', () => setSelectedIds(new Set())), []);
 
-    const pageIds = employees.data.map((employee) => employee.id);
-    const selectedOnPageCount = pageIds.filter((id) =>
-        selectedIds.has(id),
-    ).length;
-    const allOnPageSelected =
-        pageIds.length > 0 && selectedOnPageCount === pageIds.length;
-    const someOnPageSelected =
-        selectedOnPageCount > 0 && !allOnPageSelected;
+    function apply(patch: Partial<Filters & { per_page: string }>) {
+        const next: Record<string, string> = {
+            ...(filters as Record<string, string>),
+            per_page: perPage,
+            ...(patch as Record<string, string>),
+        };
 
-    function toggleAllOnPage(checked: boolean) {
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
+        Object.keys(next).forEach((key) => {
+            if (!next[key] || (key === 'per_page' && next[key] === '15')) {
+                delete next[key];
+            }
+        });
 
-            pageIds.forEach((id) => {
-                if (checked) {
-                    next.add(id);
-                } else {
-                    next.delete(id);
-                }
-            });
-
-            return next;
+        router.get(EmployeeController.index.url(), next, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
         });
     }
 
-    function toggleOne(id: number, checked: boolean) {
+    function submitSearch(event: FormEvent) {
+        event.preventDefault();
+        apply({ search });
+    }
+
+    const pageIds = employees.data.map((e) => e.id);
+    const selectedOnPage = pageIds.filter((id) => selectedIds.has(id)).length;
+    const allOnPage = pageIds.length > 0 && selectedOnPage === pageIds.length;
+
+    function toggle(id: number, checked: boolean) {
         setSelectedIds((prev) => {
             const next = new Set(prev);
 
@@ -137,15 +141,15 @@ export default function Index({
         });
     }
 
-    function handlePerPageChange(value: string) {
-        setPerPageValue(value);
-        router.get(
-            EmployeeController.index.url({
-                query: { ...filters, per_page: value },
-            }),
-            {},
-            { preserveState: true, preserveScroll: true },
-        );
+    function toggleAll(checked: boolean) {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            pageIds.forEach((id) =>
+                checked ? next.add(id) : next.delete(id),
+            );
+
+            return next;
+        });
     }
 
     function handleBulkDelete() {
@@ -162,34 +166,46 @@ export default function Index({
         });
     }
 
+    const hasFilters = Boolean(
+        filters.search ||
+            filters.site_id ||
+            filters.kelengkapan ||
+            filters.status,
+    );
+    const summary = `${nf.format(stats.active)} aktif · ${nf.format(stats.incomplete)} belum lengkap`;
+
     return (
         <>
-            <Head title="Data Karyawan" />
+            <Head title="Daftar Karyawan" />
 
-            <div className="space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <Heading
-                        title="Data Karyawan"
-                        description="Data ini dipakai untuk auto-fill saat membuat paklaring lewat NRPP."
-                    />
+            <div className="relative flex flex-col gap-2.5 md:gap-[18px]">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div className="hidden flex-col gap-1 md:flex">
+                        <h1 className="text-[30px] leading-[1.15] font-extrabold tracking-[-0.025em]">
+                            Daftar Karyawan
+                        </h1>
+                        <div className="tabular text-sm text-muted-foreground">
+                            {summary}
+                        </div>
+                    </div>
                     <div className="flex flex-wrap gap-2">
-                        <Button asChild variant="outline">
+                        <Button variant="outline" asChild>
                             <a
                                 href={EmployeeController.export.url({
                                     query: filters,
                                 })}
                             >
-                                <FileDown />
-                                Export Excel
+                                <Download />
+                                Export
                             </a>
                         </Button>
-                        <Button asChild variant="outline">
+                        <Button variant="outline" asChild>
                             <Link href={EmployeeController.importForm()}>
-                                <FileUp />
-                                Import Excel
+                                <Upload />
+                                Import
                             </Link>
                         </Button>
-                        <Button asChild>
+                        <Button variant="accent" className="font-bold" asChild>
                             <Link href={EmployeeController.create()}>
                                 <Plus />
                                 Tambah Karyawan
@@ -198,474 +214,450 @@ export default function Index({
                     </div>
                 </div>
 
-                {/* Stats */}
-                <div className="grid gap-4 sm:grid-cols-3">
-                    <Card>
-                        <CardContent className="flex items-center gap-4">
-                            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                <Users className="size-5" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-semibold tabular-nums">
-                                    {employees.total}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                    Total karyawan
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="flex items-center gap-4">
-                            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
-                                <UserCheck className="size-5" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-semibold tabular-nums">
-                                    {stats.active}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                    Masih aktif
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="flex items-center gap-4">
-                            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                                <UserX className="size-5" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-semibold tabular-nums">
-                                    {stats.inactive}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                    Nonaktif
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                <form
+                    onSubmit={submitSearch}
+                    className="flex flex-col gap-2 md:flex-row md:flex-wrap"
+                >
+                    <label className="relative block md:flex-[1_1_260px]">
+                        <span className="sr-only">Cari karyawan</span>
+                        <Search
+                            className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-muted-foreground"
+                            strokeWidth={1.8}
+                            aria-hidden
+                        />
+                        <input
+                            type="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            onBlur={() => {
+                                if (search !== (filters.search ?? '')) {
+                                    apply({ search });
+                                }
+                            }}
+                            placeholder="Cari NRPP atau nama"
+                            className={cn(control, 'pl-[42px]')}
+                        />
+                    </label>
+                    <div
+                        className={cn(
+                            'grid gap-2 md:flex',
+                            isSuperAdmin ? 'grid-cols-3' : 'grid-cols-2',
+                        )}
+                    >
+                        {isSuperAdmin && (
+                            <select
+                                aria-label="Filter site"
+                                value={filters.site_id ?? ''}
+                                onChange={(e) =>
+                                    apply({ site_id: e.target.value })
+                                }
+                                className={cn(control, 'md:w-44')}
+                            >
+                                <option value="">Semua site</option>
+                                {sites.map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                        <select
+                            aria-label="Filter kelengkapan"
+                            value={filters.kelengkapan ?? ''}
+                            onChange={(e) =>
+                                apply({ kelengkapan: e.target.value })
+                            }
+                            className={cn(control, 'md:w-48')}
+                        >
+                            <option value="">Semua kelengkapan</option>
+                            <option value="lengkap">Lengkap</option>
+                            <option value="belum">Belum lengkap</option>
+                        </select>
+                        <select
+                            aria-label="Filter status"
+                            value={filters.status ?? ''}
+                            onChange={(e) => apply({ status: e.target.value })}
+                            className={cn(control, 'md:w-40')}
+                        >
+                            <option value="">Semua status</option>
+                            <option value="aktif">Aktif</option>
+                            <option value="nonaktif">Nonaktif</option>
+                        </select>
+                    </div>
+                </form>
+
+                <div className="tabular px-0.5 text-[13px] text-muted-foreground md:hidden">
+                    {summary}
                 </div>
 
-                {/* Filters */}
-                <Card>
-                    <CardContent>
-                        <Form
-                            {...EmployeeController.index.form()}
-                            className="flex flex-wrap items-end gap-3"
-                        >
-                            {() => (
-                                <>
-                                    <div className="grid gap-1.5">
-                                        <label
-                                            htmlFor="search"
-                                            className="text-xs font-medium text-muted-foreground"
-                                        >
-                                            Cari
-                                        </label>
-                                        <div className="relative">
-                                            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                                            <Input
-                                                id="search"
-                                                name="search"
-                                                placeholder="Nama atau NRPP"
-                                                defaultValue={filters.search}
-                                                className="w-64 pl-8"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {auth.user.role === 'super_admin' && (
-                                        <div className="grid gap-1.5">
-                                            <label
-                                                htmlFor="site_id"
-                                                className="text-xs font-medium text-muted-foreground"
-                                            >
-                                                Site
-                                            </label>
-                                            <Select
-                                                value={siteFilter}
-                                                onValueChange={setSiteFilter}
-                                            >
-                                                <SelectTrigger
-                                                    id="site_id"
-                                                    className="w-48"
-                                                >
-                                                    <SelectValue placeholder="Semua site" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">
-                                                        Semua site
-                                                    </SelectItem>
-                                                    {sites.map((site) => (
-                                                        <SelectItem
-                                                            key={site.id}
-                                                            value={String(
-                                                                site.id,
-                                                            )}
-                                                        >
-                                                            {site.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <input
-                                                type="hidden"
-                                                name="site_id"
-                                                value={
-                                                    siteFilter === 'all'
-                                                        ? ''
-                                                        : siteFilter
-                                                }
-                                            />
-                                        </div>
-                                    )}
-
-                                    <Button type="submit" variant="secondary">
-                                        Terapkan Filter
-                                    </Button>
-
-                                    <div className="ml-auto grid gap-1.5">
-                                        <label
-                                            htmlFor="per_page"
-                                            className="text-xs font-medium text-muted-foreground"
-                                        >
-                                            Tampilkan
-                                        </label>
-                                        <Select
-                                            value={perPageValue}
-                                            onValueChange={
-                                                handlePerPageChange
-                                            }
-                                        >
-                                            <SelectTrigger
-                                                id="per_page"
-                                                className="w-32"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="15">
-                                                    15 baris
-                                                </SelectItem>
-                                                <SelectItem value="50">
-                                                    50 baris
-                                                </SelectItem>
-                                                <SelectItem value="100">
-                                                    100 baris
-                                                </SelectItem>
-                                                <SelectItem value="all">
-                                                    Semua
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <input
-                                            type="hidden"
-                                            name="per_page"
-                                            value={perPageValue}
-                                        />
-                                    </div>
-                                </>
-                            )}
-                        </Form>
-                    </CardContent>
-                </Card>
-
-                {/* Bulk actions */}
-                {selectedIds.size > 0 && (
-                    <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/40 px-4 py-3">
-                        <span className="text-sm font-medium">
-                            {selectedIds.size} karyawan dipilih
+                {employees.data.length === 0 ? (
+                    <div
+                        className={cn(
+                            card,
+                            'flex flex-col items-center gap-3 px-6 py-14 text-center',
+                        )}
+                    >
+                        <span className="flex size-12 items-center justify-center rounded-full bg-muted">
+                            <Users
+                                className="size-6 text-muted-foreground"
+                                strokeWidth={1.8}
+                                aria-hidden
+                            />
                         </span>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => setBulkDeleteOpen(true)}
-                        >
-                            <Trash2 />
-                            Hapus Terpilih
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedIds(new Set())}
-                        >
-                            <X />
-                            Batalkan pilihan
-                        </Button>
+                        <div className="text-base font-bold">
+                            {hasFilters
+                                ? 'Tidak ada karyawan yang cocok'
+                                : 'Belum ada data karyawan'}
+                        </div>
+                        <p className="max-w-sm text-sm text-muted-foreground">
+                            {hasFilters
+                                ? 'Ubah atau hapus filter untuk melihat hasil lain.'
+                                : 'Tambahkan karyawan satu per satu atau import dari file Excel.'}
+                        </p>
+                        {hasFilters ? (
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setSearch('');
+                                    router.get(
+                                        EmployeeController.index.url(),
+                                        {},
+                                        { replace: true },
+                                    );
+                                }}
+                            >
+                                Hapus filter
+                            </Button>
+                        ) : (
+                            <Button variant="accent" asChild>
+                                <Link href={EmployeeController.importForm()}>
+                                    <Upload />
+                                    Import Karyawan
+                                </Link>
+                            </Button>
+                        )}
                     </div>
-                )}
-
-                {/* Table */}
-                <Card className="py-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-px">
-                                    <Checkbox
-                                        checked={
-                                            allOnPageSelected
-                                                ? true
-                                                : someOnPageSelected
-                                                  ? 'indeterminate'
-                                                  : false
-                                        }
-                                        onCheckedChange={(checked) =>
-                                            toggleAllOnPage(checked === true)
-                                        }
-                                        aria-label="Pilih semua karyawan di halaman ini"
-                                    />
-                                </TableHead>
-                                <TableHead>Karyawan</TableHead>
-                                <TableHead>NRPP</TableHead>
-                                <TableHead>Site</TableHead>
-                                <TableHead>Classification</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="w-px" />
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {employees.data.map((employee) => (
-                                <TableRow
-                                    key={employee.id}
-                                    data-state={
-                                        selectedIds.has(employee.id)
-                                            ? 'selected'
-                                            : undefined
-                                    }
-                                >
-                                    <TableCell>
-                                        <Checkbox
-                                            checked={selectedIds.has(
-                                                employee.id,
-                                            )}
-                                            onCheckedChange={(checked) =>
-                                                toggleOne(
-                                                    employee.id,
-                                                    checked === true,
-                                                )
-                                            }
-                                            aria-label={`Pilih ${employee.nama}`}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar>
-                                                <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-                                                    {getInitials(
-                                                        employee.nama,
-                                                    )}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <span className="font-medium whitespace-nowrap">
-                                                {employee.nama}
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground">
-                                        {employee.nrpp}
-                                    </TableCell>
-                                    <TableCell>
-                                        {employee.site?.name ?? '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {employee.classification ?? '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {employee.is_active ? (
-                                            <Badge className="border-transparent bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
-                                                Aktif
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="secondary">
-                                                Nonaktif
-                                            </Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-8"
-                                                >
-                                                    <MoreHorizontal />
-                                                    <span className="sr-only">
-                                                        Aksi
-                                                    </span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem asChild>
-                                                    <Link
-                                                        href={EmployeeController.edit(
-                                                            employee,
-                                                        )}
-                                                    >
-                                                        <Pencil />
-                                                        Edit
-                                                    </Link>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    variant="destructive"
-                                                    onSelect={(event) => {
-                                                        event.preventDefault();
-                                                        setDeleteTarget(
-                                                            employee,
-                                                        );
-                                                    }}
-                                                >
-                                                    <Trash2 />
-                                                    Hapus
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-
-                            {employees.data.length === 0 && (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={7}
-                                        className="h-32 text-center text-muted-foreground"
-                                    >
-                                        <div className="flex flex-col items-center gap-2">
-                                            <Users className="size-8 text-muted-foreground/50" />
-                                            <p>Belum ada data karyawan.</p>
-                                            {(filters.search ||
-                                                filters.site_id) && (
-                                                <p className="text-xs">
-                                                    Coba ubah kata kunci atau
-                                                    filter site.
-                                                </p>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </Card>
-
-                {employees.last_page > 1 && (
-                    <Pagination>
-                        <PaginationContent>
-                            {employees.links.map((link, i) => {
-                                if (link.label === '...') {
-                                    return (
-                                        <PaginationItem key={i}>
-                                            <PaginationEllipsis />
-                                        </PaginationItem>
-                                    );
-                                }
-
-                                if (/previous/i.test(link.label)) {
-                                    return (
-                                        <PaginationItem key={i}>
-                                            <PaginationPrevious
-                                                href={link.url}
-                                            />
-                                        </PaginationItem>
-                                    );
-                                }
-
-                                if (/next/i.test(link.label)) {
-                                    return (
-                                        <PaginationItem key={i}>
-                                            <PaginationNext href={link.url} />
-                                        </PaginationItem>
-                                    );
-                                }
+                ) : (
+                    <>
+                        <ul className="flex flex-col gap-2.5 md:hidden">
+                            {employees.data.map((e) => {
+                                const on = selectedIds.has(e.id);
 
                                 return (
-                                    <PaginationItem key={i}>
-                                        <PaginationLink
-                                            href={link.url}
-                                            isActive={link.active}
+                                    <li
+                                        key={e.id}
+                                        className={cn(
+                                            'flex items-stretch rounded-lg py-1 pr-1 shadow-[0_1px_2px_oklch(0.191_0_0/0.06)]',
+                                            on ? 'bg-accent-soft' : 'bg-card',
+                                        )}
+                                    >
+                                        <label className="flex w-12 flex-none cursor-pointer items-center justify-center">
+                                            <Checkbox
+                                                checked={on}
+                                                onCheckedChange={(v) =>
+                                                    toggle(e.id, v === true)
+                                                }
+                                                aria-label={`Pilih ${e.nama}`}
+                                            />
+                                        </label>
+                                        <Link
+                                            href={EmployeeController.edit(e)}
+                                            className="flex min-w-0 flex-1 flex-col gap-1.5 rounded-md py-2.5 pr-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         >
-                                            {decodeLabel(link.label)}
-                                        </PaginationLink>
-                                    </PaginationItem>
+                                            <span className="flex items-center justify-between gap-2">
+                                                <span className="truncate text-[15px] font-bold">
+                                                    {e.nama}
+                                                </span>
+                                                <CompletePill
+                                                    ok={
+                                                        e.is_complete_for_paklaring
+                                                    }
+                                                />
+                                            </span>
+                                            <span className="tabular truncate text-xs text-muted-foreground">
+                                                NRPP {e.nrpp} ·{' '}
+                                                {e.site?.name ?? e.lokasi ?? '–'}
+                                            </span>
+                                            <span>
+                                                <StatusPill
+                                                    active={e.is_active}
+                                                />
+                                            </span>
+                                        </Link>
+                                    </li>
                                 );
                             })}
-                        </PaginationContent>
-                    </Pagination>
+                        </ul>
+
+                        <section
+                            className={cn(card, 'hidden overflow-hidden md:block')}
+                        >
+                            <div className="overflow-x-auto">
+                                <div
+                                    role="table"
+                                    aria-label="Daftar karyawan"
+                                    className="min-w-[1080px]"
+                                >
+                                    <div
+                                        role="row"
+                                        className={cn(
+                                            GRID,
+                                            'bg-muted py-1.5 text-[11px] font-bold tracking-[0.08em] text-muted-foreground uppercase',
+                                        )}
+                                    >
+                                        <span
+                                            role="columnheader"
+                                            className="flex size-11 items-center justify-center"
+                                        >
+                                            <Checkbox
+                                                checked={
+                                                    allOnPage
+                                                        ? true
+                                                        : selectedOnPage > 0
+                                                          ? 'indeterminate'
+                                                          : false
+                                                }
+                                                onCheckedChange={(v) =>
+                                                    toggleAll(v === true)
+                                                }
+                                                aria-label="Pilih semua baris"
+                                            />
+                                        </span>
+                                        <span role="columnheader">NRPP</span>
+                                        <span role="columnheader">Nama</span>
+                                        <span role="columnheader">Project</span>
+                                        <span role="columnheader">Lokasi</span>
+                                        <span role="columnheader">
+                                            Classification
+                                        </span>
+                                        <span role="columnheader">DOH</span>
+                                        <span role="columnheader">
+                                            Paklaring
+                                        </span>
+                                        <span role="columnheader">Status</span>
+                                        <span
+                                            role="columnheader"
+                                            className="sr-only"
+                                        >
+                                            Aksi
+                                        </span>
+                                    </div>
+                                    {employees.data.map((e) => {
+                                        const on = selectedIds.has(e.id);
+
+                                        return (
+                                            <div
+                                                key={e.id}
+                                                role="row"
+                                                className={cn(
+                                                    GRID,
+                                                    'border-t border-border py-1.5 text-[13px]',
+                                                    on && 'bg-accent-soft',
+                                                )}
+                                            >
+                                                <span
+                                                    role="cell"
+                                                    className="flex size-11 items-center justify-center"
+                                                >
+                                                    <Checkbox
+                                                        checked={on}
+                                                        onCheckedChange={(v) =>
+                                                            toggle(
+                                                                e.id,
+                                                                v === true,
+                                                            )
+                                                        }
+                                                        aria-label={`Pilih ${e.nama}`}
+                                                    />
+                                                </span>
+                                                <span
+                                                    role="cell"
+                                                    className="tabular font-bold"
+                                                >
+                                                    {e.nrpp}
+                                                </span>
+                                                <span
+                                                    role="cell"
+                                                    className="truncate text-sm font-semibold"
+                                                >
+                                                    {e.nama}
+                                                </span>
+                                                <span
+                                                    role="cell"
+                                                    className="truncate"
+                                                >
+                                                    {e.project || '–'}
+                                                </span>
+                                                <span
+                                                    role="cell"
+                                                    className="truncate"
+                                                >
+                                                    {e.lokasi || '–'}
+                                                </span>
+                                                <span
+                                                    role="cell"
+                                                    className="truncate"
+                                                >
+                                                    {e.classification || '–'}
+                                                </span>
+                                                <span
+                                                    role="cell"
+                                                    className="tabular"
+                                                >
+                                                    {formatDate(e.doh)}
+                                                </span>
+                                                <span role="cell">
+                                                    <CompletePill
+                                                        ok={
+                                                            e.is_complete_for_paklaring
+                                                        }
+                                                    />
+                                                </span>
+                                                <span role="cell">
+                                                    <StatusPill
+                                                        active={e.is_active}
+                                                    />
+                                                </span>
+                                                <span role="cell">
+                                                    <Link
+                                                        href={EmployeeController.edit(
+                                                            e,
+                                                        )}
+                                                        aria-label={`Edit ${e.nama}`}
+                                                        className="flex size-10 items-center justify-center rounded-full outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                                                    >
+                                                        <Pencil
+                                                            className="size-[18px]"
+                                                            strokeWidth={1.8}
+                                                            aria-hidden
+                                                        />
+                                                    </Link>
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </section>
+
+                        <div
+                            className={cn(
+                                card,
+                                'tabular flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-[13px] text-muted-foreground',
+                            )}
+                        >
+                            <span className="flex items-center gap-3">
+                                <span>
+                                    {nf.format(employees.from ?? 0)}–
+                                    {nf.format(employees.to ?? 0)} dari{' '}
+                                    {nf.format(employees.total)}
+                                </span>
+                                <select
+                                    value={perPage}
+                                    onChange={(e) =>
+                                        apply({ per_page: e.target.value })
+                                    }
+                                    className="h-9 rounded-full border border-border bg-card px-2.5 text-[13px] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    aria-label="Jumlah baris per halaman"
+                                >
+                                    <option value="15">15 / halaman</option>
+                                    <option value="50">50 / halaman</option>
+                                    <option value="100">100 / halaman</option>
+                                    <option value="all">Semua</option>
+                                </select>
+                            </span>
+                            <span className="flex gap-1.5">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!employees.prev_page_url}
+                                    onClick={() =>
+                                        employees.prev_page_url &&
+                                        router.get(
+                                            employees.prev_page_url,
+                                            {},
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    Sebelumnya
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!employees.next_page_url}
+                                    onClick={() =>
+                                        employees.next_page_url &&
+                                        router.get(
+                                            employees.next_page_url,
+                                            {},
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    Berikutnya
+                                </Button>
+                            </span>
+                        </div>
+                    </>
+                )}
+
+                {selectedIds.size > 0 && (
+                    <div
+                        role="toolbar"
+                        aria-label="Aksi massal"
+                        className="fixed inset-x-4 bottom-[calc(96px+env(safe-area-inset-bottom))] z-40 flex items-center gap-1 rounded-full bg-primary py-1.5 pr-1.5 pl-4 text-primary-foreground shadow-[0_10px_30px_rgba(20,20,20,0.22)] md:sticky md:inset-x-auto md:bottom-5 md:gap-2 md:self-center md:py-2 md:pr-2 md:pl-5"
+                    >
+                        <span
+                            className="tabular flex-1 text-sm font-bold md:mr-3 md:flex-none"
+                            aria-live="polite"
+                        >
+                            {selectedIds.size} dipilih
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedIds(new Set())}
+                            className="h-11 rounded-full px-3 text-sm font-semibold outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent md:px-4"
+                        >
+                            <span className="md:hidden">Batal</span>
+                            <span className="hidden md:inline">Batal pilih</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setBulkDeleteOpen(true)}
+                            className="flex h-11 items-center gap-2 rounded-full bg-[oklch(0.472_0.163_30)] px-4 text-sm font-bold text-white outline-none focus-visible:ring-2 focus-visible:ring-accent md:px-[18px]"
+                        >
+                            <Trash2
+                                className="hidden size-[18px] md:block"
+                                strokeWidth={1.8}
+                                aria-hidden
+                            />
+                            Hapus
+                        </button>
+                    </div>
                 )}
             </div>
 
-            <Dialog
-                open={deleteTarget !== null}
-                onOpenChange={(open) => !open && setDeleteTarget(null)}
-            >
-                <DialogContent>
-                    {deleteTarget && (
-                        <>
-                            <DialogTitle>
-                                Hapus data {deleteTarget.nama}?
-                            </DialogTitle>
-                            <DialogDescription>
-                                Data paklaring yang sudah pernah dibuat untuk
-                                karyawan ini tidak akan terpengaruh.
-                            </DialogDescription>
-                            <Form
-                                {...EmployeeController.destroy.form(
-                                    deleteTarget,
-                                )}
-                                onSuccess={() => setDeleteTarget(null)}
-                            >
-                                {({ processing }) => (
-                                    <DialogFooter className="gap-2">
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            onClick={() =>
-                                                setDeleteTarget(null)
-                                            }
-                                        >
-                                            Batal
-                                        </Button>
-                                        <Button
-                                            variant="destructive"
-                                            type="submit"
-                                            disabled={processing}
-                                        >
-                                            Hapus
-                                        </Button>
-                                    </DialogFooter>
-                                )}
-                            </Form>
-                        </>
-                    )}
-                </DialogContent>
-            </Dialog>
-
             <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
-                <DialogContent>
-                    <DialogTitle>
-                        Hapus {selectedIds.size} data karyawan?
-                    </DialogTitle>
+                <DialogContent className="rounded-xl">
+                    <DialogTitle>Hapus {selectedIds.size} karyawan?</DialogTitle>
                     <DialogDescription>
-                        Data paklaring yang sudah pernah dibuat untuk
-                        karyawan-karyawan ini tidak akan terpengaruh.
-                        Tindakan ini tidak bisa dibatalkan.
+                        Paklaring yang sudah pernah dibuat untuk karyawan ini
+                        tidak terpengaruh. Tindakan ini tidak bisa dibatalkan.
                     </DialogDescription>
                     <DialogFooter className="gap-2">
                         <Button
-                            type="button"
-                            variant="secondary"
+                            variant="outline"
                             onClick={() => setBulkDeleteOpen(false)}
                         >
                             Batal
                         </Button>
                         <Button
                             variant="destructive"
-                            disabled={bulkProcessing}
+                            loading={bulkProcessing}
                             onClick={handleBulkDelete}
                         >
-                            {bulkProcessing && <Spinner />}
-                            Hapus {selectedIds.size} Karyawan
+                            Hapus {selectedIds.size} karyawan
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -675,5 +667,7 @@ export default function Index({
 }
 
 Index.layout = {
-    breadcrumbs: [{ title: 'Data Karyawan', href: EmployeeController.index() }],
+    breadcrumbs: [
+        { title: 'Daftar Karyawan', href: EmployeeController.index() },
+    ],
 };

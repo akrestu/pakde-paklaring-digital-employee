@@ -24,6 +24,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('paklarings/{paklaring}/pdf', [PaklaringController::class, 'pdf'])->name('paklarings.pdf');
 
     Route::get('employees/import', [EmployeeController::class, 'importForm'])->name('employees.import.form');
+    Route::post('employees/import/preview', [EmployeeController::class, 'importPreview'])->name('employees.import.preview');
     Route::post('employees/import', [EmployeeController::class, 'import'])->name('employees.import');
     Route::get('employees/template', [EmployeeController::class, 'template'])->name('employees.template');
     Route::get('employees/export', [EmployeeController::class, 'export'])->name('employees.export');

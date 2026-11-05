@@ -61,20 +61,51 @@ class EmployeeImportService
      */
     public function import(UploadedFile $file, User $user, ?Site $defaultSite): EmployeeImportResult
     {
+        $created = 0;
+        $updated = 0;
+        $skipped = [];
+
+        foreach ($this->plan($file, $user, $defaultSite) as $row) {
+            if ($row->isSkipped()) {
+                $skipped[] = $row->skipLabel();
+
+                continue;
+            }
+
+            try {
+                $employee = Employee::updateOrCreate(
+                    ['nrpp' => $row->attributes['nrpp']],
+                    [...$row->attributes, 'site_id' => $row->site?->id],
+                );
+
+                $employee->wasRecentlyCreated ? $created++ : $updated++;
+            } catch (Throwable $e) {
+                $skipped[] = "Baris {$row->rowNumber}: gagal disimpan ({$e->getMessage()}).";
+            }
+        }
+
+        return new EmployeeImportResult($created, $updated, $skipped);
+    }
+
+    /**
+     * Read and check every data row without saving anything. The preview
+     * screen shows this plan; import() saves exactly the rows it accepts.
+     *
+     * @return list<EmployeeImportRow>
+     */
+    public function plan(UploadedFile $file, User $user, ?Site $defaultSite): array
+    {
         $reader = IOFactory::createReaderForFile($file->getRealPath());
         $reader->setReadDataOnly(true);
         $spreadsheet = $reader->load($file->getRealPath());
         $rows = $spreadsheet->getActiveSheet()->toArray(null, true, false);
 
         if ($rows === []) {
-            return new EmployeeImportResult(0, 0, ['File kosong atau tidak terbaca.']);
+            return [new EmployeeImportRow(0, EmployeeImportRow::STATUS_SKIP, [], null, 'File kosong atau tidak terbaca.')];
         }
 
         $columns = $this->mapHeaderRow(array_shift($rows));
-
-        $created = 0;
-        $updated = 0;
-        $skipped = [];
+        $parsed = [];
 
         foreach ($rows as $index => $row) {
             $rowNumber = $index + 2;
@@ -89,8 +120,23 @@ class EmployeeImportService
                 continue;
             }
 
+            $parsed[] = [$rowNumber, $attributes];
+        }
+
+        // Which NRPPs already exist, so each row can be labelled new/update
+        // exactly the way updateOrCreate() will treat it.
+        $existing = Employee::query()
+            ->whereIn('nrpp', array_filter(array_map(fn ($p) => $p[1]['nrpp'] ?? null, $parsed)))
+            ->pluck('nrpp')
+            ->map(fn ($nrpp) => (string) $nrpp)
+            ->flip();
+
+        $plan = [];
+        $seen = [];
+
+        foreach ($parsed as [$rowNumber, $attributes]) {
             if (blank($attributes['nrpp'] ?? null) || blank($attributes['nama'] ?? null)) {
-                $skipped[] = "Baris {$rowNumber}: kolom nrpp dan nama wajib diisi.";
+                $plan[] = new EmployeeImportRow($rowNumber, EmployeeImportRow::STATUS_SKIP, $attributes, null, 'kolom nrpp dan nama wajib diisi.');
 
                 continue;
             }
@@ -98,57 +144,48 @@ class EmployeeImportService
             $siteCode = $attributes['site_code'] ?? null;
             unset($attributes['site_code']);
 
-            $site = $this->resolveSite($siteCode, $user, $defaultSite, $rowNumber, $skipped);
+            [$site, $error] = $this->resolveSite($siteCode, $user, $defaultSite);
 
             if ($site === null) {
+                $plan[] = new EmployeeImportRow($rowNumber, EmployeeImportRow::STATUS_SKIP, $attributes, null, $error);
+
                 continue;
             }
 
-            try {
-                $employee = Employee::updateOrCreate(
-                    ['nrpp' => $attributes['nrpp']],
-                    [...$attributes, 'site_id' => $site->id],
-                );
+            $nrpp = (string) $attributes['nrpp'];
+            $status = isset($existing[$nrpp]) || isset($seen[$nrpp])
+                ? EmployeeImportRow::STATUS_UPDATE
+                : EmployeeImportRow::STATUS_NEW;
+            $seen[$nrpp] = true;
 
-                $employee->wasRecentlyCreated ? $created++ : $updated++;
-            } catch (Throwable $e) {
-                $skipped[] = "Baris {$rowNumber}: gagal disimpan ({$e->getMessage()}).";
-            }
+            $plan[] = new EmployeeImportRow($rowNumber, $status, $attributes, $site);
         }
 
-        return new EmployeeImportResult($created, $updated, $skipped);
+        return $plan;
     }
 
     /**
-     * @param  string[]  $skipped
+     * @return array{0: ?Site, 1: ?string} The site, or null with the reason.
      */
-    private function resolveSite(?string $siteCode, User $user, ?Site $defaultSite, int $rowNumber, array &$skipped): ?Site
+    private function resolveSite(?string $siteCode, User $user, ?Site $defaultSite): array
     {
         if (blank($siteCode)) {
-            if ($defaultSite === null) {
-                $skipped[] = "Baris {$rowNumber}: site wajib diisi (kolom \"site\" kosong dan tidak ada site default dipilih).";
-
-                return null;
-            }
-
-            return $defaultSite;
+            return $defaultSite === null
+                ? [null, 'site wajib diisi (kolom "site" kosong dan tidak ada site default dipilih).']
+                : [$defaultSite, null];
         }
 
         $site = Site::where('code', Str::upper(trim($siteCode)))->first();
 
         if ($site === null) {
-            $skipped[] = "Baris {$rowNumber}: kode site \"{$siteCode}\" tidak ditemukan di aplikasi.";
-
-            return null;
+            return [null, "kode site \"{$siteCode}\" tidak ditemukan di aplikasi."];
         }
 
         if (! $user->isSuperAdmin() && $site->id !== $user->site_id) {
-            $skipped[] = "Baris {$rowNumber}: site \"{$siteCode}\" bukan site Anda, dilewati.";
-
-            return null;
+            return [null, "site \"{$siteCode}\" bukan site Anda, dilewati."];
         }
 
-        return $site;
+        return [$site, null];
     }
 
     /**

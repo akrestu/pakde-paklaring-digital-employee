@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\EmployeeFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -68,6 +69,48 @@ class Employee extends Model
     public function getIsCompleteForPaklaringAttribute(): bool
     {
         return $this->paklaringMissingFields() === [];
+    }
+
+    /** Text columns a paklaring needs, mirrored by paklaringMissingFields(). */
+    private const PAKLARING_TEXT_FIELDS = [
+        'tempat_lahir', 'alamat', 'project', 'lokasi',
+        'beginning_classification', 'beginning_versatility', 'classification', 'versatility',
+    ];
+
+    /** Date columns a paklaring needs, mirrored by paklaringMissingFields(). */
+    private const PAKLARING_DATE_FIELDS = ['tanggal_lahir', 'doh'];
+
+    /**
+     * Query equivalent of is_complete_for_paklaring (an accessor cannot be
+     * filtered in SQL).
+     *
+     * @param  Builder<Employee>  $query
+     */
+    public function scopeCompleteForPaklaring(Builder $query): void
+    {
+        foreach (self::PAKLARING_TEXT_FIELDS as $column) {
+            $query->whereNotNull($column)->where($column, '!=', '');
+        }
+
+        foreach (self::PAKLARING_DATE_FIELDS as $column) {
+            $query->whereNotNull($column);
+        }
+    }
+
+    /**
+     * @param  Builder<Employee>  $query
+     */
+    public function scopeIncompleteForPaklaring(Builder $query): void
+    {
+        $query->where(function (Builder $query) {
+            foreach (self::PAKLARING_TEXT_FIELDS as $column) {
+                $query->orWhereNull($column)->orWhere($column, '');
+            }
+
+            foreach (self::PAKLARING_DATE_FIELDS as $column) {
+                $query->orWhereNull($column);
+            }
+        });
     }
 
     /**

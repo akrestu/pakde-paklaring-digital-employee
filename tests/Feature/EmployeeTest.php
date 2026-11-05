@@ -98,7 +98,7 @@ test('importing an xlsx file creates and updates employees by nrpp', function ()
     ]);
 
     $this->actingAs($user)->post(route('employees.import'), ['file' => $file])
-        ->assertRedirect(route('employees.index'));
+        ->assertRedirect(route('employees.import.form'));
 
     expect(Employee::where('nrpp', '111')->first()->nama)->toBe('Nama Baru')
         ->and(Employee::where('nrpp', '222')->first())->not->toBeNull()
@@ -117,7 +117,7 @@ test('super admin importing a file with a site column syncs each row to the matc
     ]);
 
     $this->actingAs($admin)->post(route('employees.import'), ['file' => $file])
-        ->assertRedirect(route('employees.index'));
+        ->assertRedirect(route('employees.import.form'));
 
     expect(Employee::where('nrpp', '111')->first()->site_id)->toBe($siteA->id)
         ->and(Employee::where('nrpp', '222')->first()->site_id)->toBe($siteB->id);
@@ -132,7 +132,7 @@ test('importing a row with an unknown site code is skipped, not imported', funct
     ]);
 
     $this->actingAs($admin)->post(route('employees.import'), ['file' => $file])
-        ->assertRedirect(route('employees.index'));
+        ->assertRedirect(route('employees.import.form'));
 
     expect(Employee::count())->toBe(0);
 });
@@ -146,7 +146,7 @@ test('super admin without a default site and a row missing the site column is sk
     ]);
 
     $this->actingAs($admin)->post(route('employees.import'), ['file' => $file])
-        ->assertRedirect(route('employees.index'));
+        ->assertRedirect(route('employees.import.form'));
 
     expect(Employee::count())->toBe(0);
 });
@@ -163,7 +163,7 @@ test('site admin cannot use the site column to import into another site', functi
     ]);
 
     $this->actingAs($user)->post(route('employees.import'), ['file' => $file])
-        ->assertRedirect(route('employees.index'));
+        ->assertRedirect(route('employees.import.form'));
 
     expect(Employee::where('nrpp', '111')->exists())->toBeFalse()
         ->and(Employee::where('nrpp', '222')->first()->site_id)->toBe($ownSite->id);
@@ -189,7 +189,7 @@ test('the example row in the template is skipped instead of imported as a real e
     $file = new UploadedFile($path, 'template.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
 
     $this->actingAs($user)->post(route('employees.import'), ['file' => $file])
-        ->assertRedirect(route('employees.index'));
+        ->assertRedirect(route('employees.import.form'));
 
     expect(Employee::count())->toBe(0)
         ->and(Employee::where('nrpp', EmployeeSpreadsheetService::EXAMPLE_NRPP)->exists())->toBeFalse();
@@ -298,4 +298,85 @@ test('employee lookup search caps the number of results', function () {
         ->getJson(route('employees.lookup', ['q' => 'Contoh']))
         ->assertOk()
         ->assertJsonCount(8, 'results');
+});
+
+test('the employee list can be filtered by completeness and active status', function () {
+    $site = Site::factory()->create();
+    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
+
+    Employee::factory()->for($site, 'site')->create(['nama' => 'Lengkap Aktif', 'is_active' => true]);
+    Employee::factory()->for($site, 'site')->create(['nama' => 'Kurang Aktif', 'is_active' => true, 'doh' => null]);
+    Employee::factory()->for($site, 'site')->create(['nama' => 'Kurang Nonaktif', 'is_active' => false, 'alamat' => '']);
+
+    $this->actingAs($user)
+        ->get(route('employees.index', ['kelengkapan' => 'belum']))
+        ->assertInertia(fn ($page) => $page->has('employees.data', 2)->where('stats.incomplete', 2));
+
+    $this->actingAs($user)
+        ->get(route('employees.index', ['kelengkapan' => 'lengkap']))
+        ->assertInertia(fn ($page) => $page->has('employees.data', 1)->where('employees.data.0.nama', 'Lengkap Aktif'));
+
+    $this->actingAs($user)
+        ->get(route('employees.index', ['kelengkapan' => 'belum', 'status' => 'nonaktif']))
+        ->assertInertia(fn ($page) => $page->has('employees.data', 1)->where('employees.data.0.nama', 'Kurang Nonaktif'));
+});
+
+test('the completeness scopes agree with the is_complete_for_paklaring accessor', function () {
+    Employee::factory()->count(3)->create();
+    Employee::factory()->create(['tanggal_lahir' => null]);
+    Employee::factory()->create(['versatility' => '']);
+
+    $byAccessor = Employee::all()->filter->is_complete_for_paklaring->pluck('id')->sort()->values()->all();
+
+    expect(Employee::completeForPaklaring()->pluck('id')->sort()->values()->all())->toBe($byAccessor)
+        ->and(Employee::incompleteForPaklaring()->count())->toBe(2);
+});
+
+test('import preview reports new, updated and skipped rows without saving anything', function () {
+    $site = Site::factory()->create(['code' => 'BAU', 'name' => 'Site BAU']);
+    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
+    Employee::factory()->for($site, 'site')->create(['nrpp' => '200', 'nama' => 'Lama']);
+
+    $file = makeXlsxUploadedFile([
+        ['nrpp', 'nama'],
+        ['100', 'Baru'],
+        ['200', 'Diperbarui'],
+        ['', 'Tanpa NRPP'],
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('employees.import.preview'), ['file' => $file])
+        ->assertRedirect(route('employees.import.form'))
+        ->assertInertiaFlash('importPreview.counts', ['new' => 1, 'update' => 1, 'skip' => 1])
+        ->assertInertiaFlash('importPreview.rows.0.status', 'new')
+        ->assertInertiaFlash('importPreview.rows.1.status', 'update')
+        ->assertInertiaFlash('importPreview.rows.2.message', 'kolom nrpp dan nama wajib diisi.')
+        ->assertInertiaFlash('importPreview.rows.0.site', 'Site BAU');
+
+    expect(Employee::count())->toBe(1)
+        ->and(Employee::sole()->nama)->toBe('Lama');
+});
+
+test('import preview and import agree on every row', function () {
+    $site = Site::factory()->create(['code' => 'BAU']);
+    $user = User::factory()->create(['role' => User::ROLE_SITE_ADMIN, 'site_id' => $site->id]);
+    Employee::factory()->for($site, 'site')->create(['nrpp' => '200']);
+
+    $rows = [
+        ['nrpp', 'nama', 'site'],
+        ['100', 'Baru', 'BAU'],
+        ['200', 'Diperbarui', ''],
+        ['300', 'Site Lain', 'XYZ'],
+    ];
+
+    $this->actingAs($user)
+        ->post(route('employees.import.preview'), ['file' => makeXlsxUploadedFile($rows)])
+        ->assertInertiaFlash('importPreview.counts', ['new' => 1, 'update' => 1, 'skip' => 1]);
+
+    $this->actingAs($user)
+        ->post(route('employees.import'), ['file' => makeXlsxUploadedFile($rows)])
+        ->assertRedirect(route('employees.import.form'))
+        ->assertInertiaFlash('importResult.created', 1)
+        ->assertInertiaFlash('importResult.updated', 1)
+        ->assertInertiaFlash('importResult.skipped', ['Baris 4: kode site "XYZ" tidak ditemukan di aplikasi.']);
 });

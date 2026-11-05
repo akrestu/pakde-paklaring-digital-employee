@@ -1,13 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
-import {
-    Building2,
-    FileText,
-    LayoutGrid,
-    UserSquare2,
-    Users,
-} from 'lucide-react';
-import AppLogo from '@/components/app-logo';
-import type { NavGroup } from '@/components/nav-main';
+import { AppearanceSwitch } from '@/components/appearance-switch';
+import { sidebarGroups } from '@/components/nav-items';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -15,17 +8,11 @@ import {
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import { index as employeesIndex } from '@/routes/employees';
-import { index as paklaringsIndex } from '@/routes/paklarings';
-import { index as sitesIndex } from '@/routes/sites';
-import { index as usersIndex } from '@/routes/users';
 import type { Auth } from '@/types';
 
+/** Desktop sidebar per `screens/Sidebar.html` (white, 256 px). */
 export function AppSidebar() {
     const {
         props: { auth },
@@ -33,68 +20,36 @@ export function AppSidebar() {
 
     const isSuperAdmin = auth.user.role === 'super_admin';
 
-    const navGroups: NavGroup[] = [
-        {
-            label: 'Menu Utama',
-            defaultOpen: true,
-            items: [
-                { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
-                {
-                    title: 'Data Karyawan',
-                    href: employeesIndex(),
-                    icon: UserSquare2,
-                },
-                {
-                    title: 'Paklaring',
-                    href: paklaringsIndex(),
-                    icon: FileText,
-                },
-            ],
-        },
-        ...(isSuperAdmin
-            ? [
-                  {
-                      label: 'Administrasi',
-                      defaultOpen: true,
-                      items: [
-                          {
-                              title: 'Sites',
-                              href: sitesIndex(),
-                              icon: Building2,
-                          },
-                          { title: 'Users', href: usersIndex(), icon: Users },
-                      ],
-                  },
-              ]
-            : []),
-    ];
-
     return (
-        <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader className="border-b border-sidebar-border/50 pb-3">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton
-                            size="lg"
-                            asChild
-                            className="rounded-xl transition-colors hover:bg-sidebar-accent/50"
-                            tooltip={{
-                                children: 'PAKDE — Paklaring Digital Employee',
-                            }}
-                        >
-                            <Link href={dashboard()} prefetch>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
+        <Sidebar collapsible="offcanvas" className="border-r border-border">
+            <SidebarHeader className="px-3.5 pt-5 pb-0">
+                <Link
+                    href={dashboard()}
+                    prefetch
+                    className="flex items-center gap-2.5 rounded-xl px-2 pt-1 pb-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    <img
+                        src="/images/logo.png"
+                        alt="Logo WBK"
+                        className="size-[34px] object-contain"
+                    />
+                    <span className="flex flex-col">
+                        <span className="text-base font-extrabold tracking-[-0.01em]">
+                            PAKDE
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                            Paklaring Digital Employee
+                        </span>
+                    </span>
+                </Link>
             </SidebarHeader>
 
-            <SidebarContent className="gap-1 px-2 py-2">
-                <NavMain groups={navGroups} />
+            <SidebarContent className="px-3.5">
+                <NavMain groups={sidebarGroups(isSuperAdmin)} />
             </SidebarContent>
 
-            <SidebarFooter className="gap-2 border-t border-sidebar-border/50 px-2 pt-3 pb-3">
+            <SidebarFooter className="gap-3 px-3.5 pt-6 pb-5">
+                <AppearanceSwitch />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

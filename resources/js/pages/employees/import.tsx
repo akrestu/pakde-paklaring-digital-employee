@@ -25,7 +25,7 @@ export default function Import({ sites }: { sites: Site[] }) {
         <>
             <Head title="Import Data Karyawan" />
 
-            <div className="space-y-6 p-4">
+            <div className="space-y-6">
                 <Heading
                     title="Import Data Karyawan"
                     description="Upload file Excel (.xlsx/.xls). Baris dengan NRPP yang sudah ada akan diperbarui, NRPP baru akan ditambahkan."

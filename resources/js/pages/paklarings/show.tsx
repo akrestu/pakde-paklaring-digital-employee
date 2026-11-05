@@ -53,7 +53,7 @@ export default function Show({
         <>
             <Head title={paklaring.no_surat} />
 
-            <div className="space-y-6 p-4">
+            <div className="space-y-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <Heading
                         title={paklaring.no_surat}

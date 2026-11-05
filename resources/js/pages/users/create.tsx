@@ -11,7 +11,7 @@ export default function Create({ sites }: { sites: Site[] }) {
         <>
             <Head title="Tambah User" />
 
-            <div className="space-y-6 p-4">
+            <div className="space-y-6">
                 <Heading title="Tambah User" />
 
                 <Form

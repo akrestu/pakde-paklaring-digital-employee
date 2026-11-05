@@ -18,7 +18,7 @@ export default function Create({
         <>
             <Head title="Tambah Karyawan" />
 
-            <div className="space-y-6 p-4 pb-24">
+            <div className="space-y-6">
                 <Link
                     href={EmployeeController.index()}
                     className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

@@ -11,7 +11,7 @@ export default function Edit({ site }: { site: Site }) {
         <>
             <Head title={`Edit ${site.name}`} />
 
-            <div className="space-y-6 p-4">
+            <div className="space-y-6">
                 <Heading title={`Edit Site — ${site.name}`} />
 
                 <Form

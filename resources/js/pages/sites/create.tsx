@@ -10,7 +10,7 @@ export default function Create() {
         <>
             <Head title="Tambah Site" />
 
-            <div className="space-y-6 p-4">
+            <div className="space-y-6">
                 <Heading title="Tambah Site" />
 
                 <Form

@@ -52,7 +52,7 @@ export default function Edit({
         <>
             <Head title={`Edit ${paklaring.no_surat}`} />
 
-            <div className="space-y-6 p-4">
+            <div className="space-y-6">
                 <Heading
                     title={`Edit Paklaring — ${paklaring.no_surat}`}
                     description="PDF akan dibuat ulang otomatis setelah perubahan disimpan."

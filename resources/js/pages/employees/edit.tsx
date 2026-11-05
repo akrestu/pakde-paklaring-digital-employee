@@ -23,7 +23,7 @@ export default function Edit({
         <>
             <Head title={`Edit ${employee.nama}`} />
 
-            <div className="space-y-6 p-4 pb-24">
+            <div className="space-y-6">
                 <Link
                     href={EmployeeController.index()}
                     className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

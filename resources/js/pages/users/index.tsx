@@ -23,7 +23,7 @@ export default function Index({ users }: { users: User[] }) {
         <>
             <Head title="Users" />
 
-            <div className="space-y-6 p-4">
+            <div className="space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Heading
                         title="Users"

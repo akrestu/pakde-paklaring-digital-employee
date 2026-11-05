@@ -1,115 +1,26 @@
-import type { InertiaLinkProps } from '@inertiajs/react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ChevronRight, Layers, Moon, Plus, Sun, Upload } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import {
-    AlertTriangle,
-    CalendarClock,
-    FileText,
-    Plus,
-    UserCheck,
-} from 'lucide-react';
-import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Pie,
-    PieChart,
-    XAxis,
-    YAxis,
-} from 'recharts';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import type { ChartConfig } from '@/components/ui/chart';
-import {
-    ChartContainer,
-    ChartLegend,
-    ChartLegendContent,
-    ChartTooltip,
-    ChartTooltipContent,
-} from '@/components/ui/chart';
-import { useInitials } from '@/hooks/use-initials';
+import { useState } from 'react';
+import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from 'recharts';
+import type { LabelProps } from 'recharts';
+import { useAppearance } from '@/hooks/use-appearance';
+import { alasanStyle } from '@/lib/alasan-phk';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
-import { index as employeesIndex } from '@/routes/employees';
+import { form as employeesImport } from '@/routes/employees/import';
 import {
     create as createPaklaring,
+    createBatch,
+    index as paklaringsIndex,
     show as showPaklaring,
 } from '@/routes/paklarings';
-import type { Auth, Paklaring } from '@/types';
+import type { Auth, Paklaring, Site } from '@/types';
 
 type MonthlyTrend = { month: string; total: number };
-type SiteBreakdown = { site: string; total: number };
+type ReasonTotal = { reason: string; total: number };
 
-function formatMonth(iso: string): string {
-    return new Intl.DateTimeFormat('id-ID', {
-        month: 'short',
-        year: 'numeric',
-    }).format(new Date(iso));
-}
-
-function StatCard({
-    icon: Icon,
-    label,
-    value,
-    tone = 'default',
-    action,
-}: {
-    icon: LucideIcon;
-    label: string;
-    value: number;
-    tone?: 'default' | 'warning';
-    action?: { label: string; href: InertiaLinkProps['href'] };
-}) {
-    return (
-        <Card>
-            <CardContent className="flex items-center gap-4">
-                <div
-                    className={cn(
-                        'flex size-10 shrink-0 items-center justify-center rounded-full',
-                        tone === 'warning'
-                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                            : 'bg-primary/10 text-primary',
-                    )}
-                >
-                    <Icon className="size-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <p className="text-2xl font-semibold tabular-nums">
-                        {value}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{label}</p>
-                </div>
-                {action && (
-                    <Link
-                        href={action.href}
-                        className="shrink-0 text-xs font-medium text-primary hover:underline"
-                    >
-                        {action.label}
-                    </Link>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
-
-export default function Dashboard({
-    stats,
-    monthlyTrend,
-    employeeStatus,
-    paklaringBySite,
-    recentPaklarings,
-    site,
-    greeting,
-    today,
-}: {
+type Props = {
     stats: {
         totalPaklaring: number;
         paklaringThisMonth: number;
@@ -117,340 +28,552 @@ export default function Dashboard({
         incompleteEmployees: number;
     };
     monthlyTrend: MonthlyTrend[];
-    employeeStatus: { active: number; inactive: number };
-    paklaringBySite: SiteBreakdown[];
+    byReason: ReasonTotal[];
     recentPaklarings: Paklaring[];
-    site: { name: string } | null;
+    site: Site | null;
+    sites: Pick<Site, 'id' | 'code' | 'name'>[];
+    filters: { site_id: number | null };
     greeting: { text: string; emoji: string };
     today: string;
+};
+
+const nf = new Intl.NumberFormat('id-ID');
+const monthShort = new Intl.DateTimeFormat('id-ID', { month: 'short' });
+const monthLong = new Intl.DateTimeFormat('id-ID', { month: 'long' });
+const dateShort = new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+});
+
+const parseMonth = (iso: string) => new Date(`${iso}T00:00:00`);
+const shortLabel = (iso: string) =>
+    monthShort.format(parseMonth(iso)).replace('.', '');
+const monthYear = (iso: string) =>
+    `${shortLabel(iso)} ${parseMonth(iso).getFullYear()}`;
+
+const card =
+    'rounded-lg bg-card shadow-[0_1px_2px_oklch(0.191_0_0/0.06)] dark:shadow-none';
+
+function SiteFilter({
+    sites,
+    value,
+}: {
+    sites: Props['sites'];
+    value: number | null;
 }) {
-    const {
-        props: { auth },
-    } = usePage<{ auth: Auth }>();
-    const getInitials = useInitials();
+    return (
+        <label className="flex h-11 items-center gap-2 self-start rounded-full bg-white pr-3.5 pl-4 text-[13px] font-semibold text-[#141414]">
+            Site
+            <select
+                aria-label="Filter site"
+                value={value ?? ''}
+                onChange={(e) =>
+                    router.get(
+                        dashboard.url(),
+                        e.target.value ? { site_id: e.target.value } : {},
+                        { preserveScroll: true, replace: true },
+                    )
+                }
+                className="rounded-md border-0 bg-transparent text-sm font-bold text-[#141414] outline-offset-2"
+            >
+                <option value="">Semua site</option>
+                {sites.map((s) => (
+                    <option key={s.id} value={s.id}>
+                        {s.name}
+                    </option>
+                ))}
+            </select>
+        </label>
+    );
+}
 
+const QUICK: {
+    label: string;
+    href: ReturnType<typeof createPaklaring>;
+    icon: LucideIcon;
+    accent?: boolean;
+}[] = [
+    { label: 'Buat Paklaring', href: createPaklaring(), icon: Plus, accent: true },
+    { label: 'Buat Batch', href: createBatch(), icon: Layers },
+    { label: 'Import Karyawan', href: employeesImport(), icon: Upload },
+];
+
+function Hero({
+    title,
+    today,
+    sites,
+    siteId,
+    isSuperAdmin,
+}: {
+    title: string;
+    today: string;
+    sites: Props['sites'];
+    siteId: number | null;
+    isSuperAdmin: boolean;
+}) {
+    const { resolvedAppearance, updateAppearance } = useAppearance();
+    const dark = resolvedAppearance === 'dark';
+
+    return (
+        <section className="relative isolate -mx-4 -mt-4 flex flex-col gap-[22px] overflow-hidden bg-[#30485F] px-5 pt-[calc(16px+env(safe-area-inset-top))] pb-[72px] text-white md:mx-0 md:mt-0 md:min-h-56 md:justify-between md:gap-7 md:rounded-[28px] md:px-7 md:py-6">
+            <img
+                src="/images/mountain.jpg"
+                alt=""
+                className="absolute inset-0 -z-30 size-full object-cover object-[62%_70%] md:object-[60%_64%]"
+            />
+            <img
+                src="/images/topo.png"
+                alt=""
+                aria-hidden
+                className="pointer-events-none absolute inset-0 -z-20 size-full object-cover object-[0%_50%] opacity-40 mix-blend-multiply md:opacity-50"
+            />
+            <div aria-hidden className="absolute inset-0 -z-10 bg-black/50" />
+
+            {/* Mobile top row: logo + theme toggle (no shell header here). */}
+            <div className="flex items-center gap-2.5 md:hidden">
+                <img
+                    src="/images/logo.png"
+                    alt="Logo WBK"
+                    className="size-8 object-contain"
+                />
+                <span className="text-base font-extrabold tracking-[-0.01em]">
+                    PAKDE
+                </span>
+                <button
+                    type="button"
+                    onClick={() => updateAppearance(dark ? 'light' : 'dark')}
+                    aria-label={dark ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'}
+                    className="ml-auto flex size-11 items-center justify-center rounded-full bg-white text-[#141414] outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                    {dark ? (
+                        <Sun className="size-5" strokeWidth={1.8} aria-hidden />
+                    ) : (
+                        <Moon className="size-5" strokeWidth={1.8} aria-hidden />
+                    )}
+                </button>
+            </div>
+
+            <div className="flex flex-col gap-[22px] md:flex-row md:flex-wrap md:items-start md:justify-between md:gap-3">
+                <div className="flex flex-col gap-1 md:gap-1.5">
+                    <div className="text-[13px] font-medium">{today}</div>
+                    <h1 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.025em] md:text-[34px]">
+                        {title}
+                    </h1>
+                </div>
+                {isSuperAdmin && <SiteFilter sites={sites} value={siteId} />}
+            </div>
+
+            <div className="hidden flex-wrap gap-2.5 md:flex">
+                {QUICK.map((q) => (
+                    <Link
+                        key={q.label}
+                        href={q.href}
+                        className={cn(
+                            'flex h-11 items-center gap-2 rounded-full px-[18px] text-sm text-[#141414] outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                            q.accent
+                                ? 'bg-accent px-5 font-bold'
+                                : 'bg-white font-semibold',
+                        )}
+                    >
+                        <q.icon className="size-[18px]" strokeWidth={1.8} aria-hidden />
+                        {q.label}
+                    </Link>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function MobileQuickActions() {
+    return (
+        <div
+            className={cn(
+                card,
+                'relative -mt-12 grid grid-cols-3 gap-1 p-3 shadow-[0_8px_24px_rgba(20,20,20,0.08)] md:hidden',
+            )}
+        >
+            {QUICK.map((q) => (
+                <Link
+                    key={q.label}
+                    href={q.href}
+                    className="flex min-h-[84px] flex-col items-center justify-center gap-2 rounded-md text-center text-xs leading-tight font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    <span
+                        className={cn(
+                            'flex size-11 items-center justify-center rounded-full',
+                            q.accent
+                                ? 'bg-accent text-accent-foreground'
+                                : 'bg-muted text-foreground',
+                        )}
+                    >
+                        <q.icon className="size-5" strokeWidth={1.8} aria-hidden />
+                    </span>
+                    {q.label}
+                </Link>
+            ))}
+        </div>
+    );
+}
+
+function StatTile({
+    label,
+    value,
+    note,
+}: {
+    label: string;
+    value: number;
+    note: string;
+}) {
+    return (
+        <div className={cn(card, 'flex flex-col gap-1.5 p-4 md:px-5 md:py-[18px]')}>
+            <div className="min-h-[31px] text-xs leading-[1.3] font-semibold text-muted-foreground md:min-h-0 md:text-[13px]">
+                {label}
+            </div>
+            <div className="tabular text-[28px] leading-[1.1] font-extrabold tracking-[-0.025em] md:text-[32px] md:leading-[1.15]">
+                {nf.format(value)}
+            </div>
+            <div className="tabular hidden text-xs text-muted-foreground md:block">
+                {note}
+            </div>
+        </div>
+    );
+}
+
+function MonthlyChart({
+    data,
+    today,
+}: {
+    data: MonthlyTrend[];
+    today: string;
+}) {
+    const [hover, setHover] = useState<number | null>(null);
+    const last = data.length - 1;
+    const peak = data.reduce((a, b) => (b.total > a.total ? b : a), data[0]);
+    const readout =
+        hover === null
+            ? `${monthYear(data[0].month)} – ${monthYear(data[last].month)}`
+            : `${monthYear(data[hover].month)} · ${nf.format(data[hover].total)} paklaring`;
+
+    const rows = data.map((d, i) => ({
+        ...d,
+        label: shortLabel(d.month),
+        index: i,
+    }));
+
+    const renderChart = (
+        rowsIn: typeof rows,
+        { mobile }: { mobile: boolean },
+    ) => (
+        <ResponsiveContainer width="100%" height={mobile ? 180 : 230}>
+            <BarChart
+                data={rowsIn}
+                margin={{ top: 22, right: 0, bottom: 0, left: 0 }}
+                barCategoryGap={mobile ? '20%' : '28%'}
+                onMouseLeave={() => setHover(null)}
+            >
+                {!mobile && (
+                    <YAxis
+                        width={28}
+                        tickLine={false}
+                        axisLine={false}
+                        allowDecimals={false}
+                        tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                    />
+                )}
+                <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    interval={0}
+                    tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                />
+                <Bar
+                    dataKey="total"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={mobile ? 30 : 26}
+                    isAnimationActive={false}
+                    onMouseEnter={(_, i) => setHover(rowsIn[i].index)}
+                    label={(p: LabelProps & { index?: number }) => {
+                        const row = rowsIn[p.index ?? 0];
+                        const show =
+                            mobile ||
+                            hover === row.index ||
+                            (hover === null && row.index >= last - 1);
+
+                        return show ? (
+                            <text
+                                x={Number(p.x) + Number(p.width) / 2}
+                                y={Number(p.y) - 6}
+                                textAnchor="middle"
+                                className="tabular fill-foreground text-xs font-bold"
+                            >
+                                {p.value}
+                            </text>
+                        ) : (
+                            <g />
+                        );
+                    }}
+                >
+                    {rowsIn.map((row) => (
+                        <Cell
+                            key={row.month}
+                            fill={
+                                row.index === last
+                                    ? 'var(--accent)'
+                                    : 'var(--primary)'
+                            }
+                            fillOpacity={
+                                hover === null || hover === row.index ? 1 : 0.35
+                            }
+                        />
+                    ))}
+                </Bar>
+            </BarChart>
+        </ResponsiveContainer>
+    );
+
+    const ariaLabel = `Grafik batang jumlah paklaring per bulan, ${monthYear(data[0].month)} sampai ${monthYear(data[last].month)}. Tertinggi ${monthYear(peak.month)} sebanyak ${peak.total}.`;
+
+    return (
+        <section className={cn(card, 'flex min-w-0 flex-col gap-3.5 p-4 md:p-5')}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-[15px] font-bold md:text-base">
+                    Paklaring per bulan
+                </h2>
+                <span
+                    className="tabular hidden text-[13px] text-muted-foreground md:inline"
+                    aria-live="polite"
+                >
+                    {readout}
+                </span>
+                <span className="text-xs text-muted-foreground md:hidden">
+                    6 bulan
+                </span>
+            </div>
+            <div role="img" aria-label={ariaLabel}>
+                <div className="hidden md:block">
+                    {renderChart(rows, { mobile: false })}
+                </div>
+                <div className="md:hidden">
+                    {renderChart(rows.slice(-6), { mobile: true })}
+                </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span
+                    aria-hidden
+                    className="size-2.5 rounded-[3px] bg-accent shadow-[inset_0_0_0_1px_var(--foreground)]"
+                />
+                Bulan berjalan, data s.d. {today.split(', ')[1]}
+            </div>
+        </section>
+    );
+}
+
+function ReasonChart({ data }: { data: ReasonTotal[] }) {
+    const total = data.reduce((sum, r) => sum + r.total, 0);
+    const max = Math.max(1, ...data.map((r) => r.total));
+
+    return (
+        <section className={cn(card, 'flex min-w-0 flex-col gap-3 p-4 md:gap-4 md:p-5')}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-[15px] font-bold md:text-base">
+                    <span className="md:hidden">Per alasan PHK</span>
+                    <span className="hidden md:inline">
+                        Paklaring per alasan PHK
+                    </span>
+                </h2>
+                <span className="tabular text-xs text-muted-foreground md:text-[13px]">
+                    12 bulan · {nf.format(total)}
+                </span>
+            </div>
+            <ul className="flex flex-col gap-3 md:gap-3.5">
+                {data.map((r) => {
+                    const width = `${(r.total / max) * 100}%`;
+                    const pct = total ? Math.round((r.total / total) * 100) : 0;
+
+                    return (
+                        <li
+                            key={r.reason}
+                            title={`${r.reason}: ${r.total} paklaring`}
+                            className="flex flex-col gap-[5px] text-[13px] md:grid md:grid-cols-[96px_minmax(0,1fr)_72px] md:items-center md:gap-3"
+                        >
+                            <div className="flex justify-between gap-2 md:contents">
+                                <span className="font-semibold">{r.reason}</span>
+                                <span className="tabular font-bold md:order-last md:text-right">
+                                    {nf.format(r.total)}{' '}
+                                    <span className="hidden font-normal text-muted-foreground md:inline">
+                                        {pct}%
+                                    </span>
+                                </span>
+                            </div>
+                            <span className="block h-2.5 rounded-r-[4px] bg-muted md:h-3.5">
+                                <span
+                                    className="block h-full rounded-r-[4px]"
+                                    style={{
+                                        width,
+                                        background: alasanStyle(r.reason).fill,
+                                    }}
+                                />
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
+        </section>
+    );
+}
+
+function ReasonBadge({ reason }: { reason: string }) {
+    return (
+        <span
+            className={cn(
+                'rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap',
+                alasanStyle(reason).badge,
+            )}
+        >
+            {reason}
+        </span>
+    );
+}
+
+function RecentList({ items }: { items: Paklaring[] }) {
+    return (
+        <section className={cn(card, 'overflow-hidden')}>
+            <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-5 md:py-4">
+                <h2 className="text-[15px] font-bold md:text-base">
+                    Paklaring terbaru
+                </h2>
+                <Link
+                    href={paklaringsIndex()}
+                    className="flex min-h-11 items-center gap-1 rounded-full text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    Lihat semua
+                    <ChevronRight className="size-4" strokeWidth={1.8} aria-hidden />
+                </Link>
+            </div>
+
+            {items.length === 0 ? (
+                <p className="border-t border-border px-5 py-8 text-center text-sm text-muted-foreground">
+                    Belum ada paklaring.
+                </p>
+            ) : (
+                <div className="overflow-x-auto">
+                    {items.map((p) => (
+                        <Link
+                            key={p.id}
+                            href={showPaklaring(p.id)}
+                            className="flex items-center gap-2.5 border-t border-border px-4 py-3 outline-none hover:bg-muted/50 focus-visible:bg-muted md:grid md:min-w-[640px] md:grid-cols-[230px_minmax(0,1.3fr)_130px_110px_24px] md:gap-3 md:px-5"
+                        >
+                            <span className="tabular hidden text-[13px] font-bold md:block">
+                                {p.no_surat}
+                            </span>
+                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                <span className="truncate text-sm font-bold md:font-semibold">
+                                    {p.nama}
+                                </span>
+                                <span className="tabular text-xs text-muted-foreground">
+                                    <span className="md:hidden">
+                                        {dateShort.format(new Date(p.created_at))}
+                                    </span>
+                                    <span className="hidden md:inline">
+                                        NRPP {p.nrpp}
+                                    </span>
+                                </span>
+                            </span>
+                            <span>
+                                <ReasonBadge reason={p.alasan_phk} />
+                            </span>
+                            <span className="tabular hidden text-[13px] text-muted-foreground md:block">
+                                {dateShort.format(new Date(p.created_at))}
+                            </span>
+                            <ChevronRight
+                                className="hidden size-[18px] text-muted-foreground md:block"
+                                strokeWidth={1.8}
+                                aria-hidden
+                            />
+                        </Link>
+                    ))}
+                </div>
+            )}
+        </section>
+    );
+}
+
+export default function Dashboard({
+    stats,
+    monthlyTrend,
+    byReason,
+    recentPaklarings,
+    site,
+    sites,
+    filters,
+    greeting,
+    today,
+}: Props) {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const isSuperAdmin = auth.user.role === 'super_admin';
     const firstName = auth.user.name.split(' ')[0];
+    const title = `${greeting.text.charAt(0)}${greeting.text.slice(1).toLowerCase()}, ${firstName}`;
 
-    const trendConfig = {
-        total: { label: 'Paklaring', color: 'var(--chart-1)' },
-    } satisfies ChartConfig;
+    const selectedSite = sites.find((s) => s.id === filters.site_id);
+    const scopeNote = site
+        ? site.name
+        : selectedSite
+          ? selectedSite.name
+          : 'Di semua site';
 
-    const statusConfig = {
-        total: { label: 'Karyawan' },
-        active: { label: 'Aktif', color: 'var(--chart-1)' },
-        inactive: { label: 'Nonaktif', color: 'var(--chart-4)' },
-    } satisfies ChartConfig;
-
-    const statusData = [
-        {
-            status: 'active',
-            total: employeeStatus.active,
-            fill: 'var(--color-active)',
-        },
-        {
-            status: 'inactive',
-            total: employeeStatus.inactive,
-            fill: 'var(--color-inactive)',
-        },
-    ];
-
-    const siteConfig = {
-        total: { label: 'Paklaring', color: 'var(--chart-2)' },
-    } satisfies ChartConfig;
+    const prev = monthlyTrend.at(-2);
 
     return (
         <>
             <Head title="Dashboard" />
 
-            <div className="@container/main flex flex-1 flex-col gap-0">
-                {/* Header / Greeting */}
-                <div className="flex flex-col gap-4 border-b px-4 py-5 lg:px-6">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-1">
-                            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                {today}
-                            </p>
-                            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-                                <span>{greeting.emoji}</span>
-                                <span>
-                                    {greeting.text}
-                                    <span className="text-primary">
-                                        , {firstName}
-                                    </span>
-                                    !
-                                </span>
-                            </h1>
-                            <p className="text-sm text-muted-foreground">
-                                {site
-                                    ? `Ringkasan aktivitas paklaring untuk ${site.name}.`
-                                    : 'Ringkasan aktivitas paklaring di seluruh site.'}
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Button asChild size="sm">
-                                <Link href={createPaklaring()}>
-                                    <Plus className="h-3.5 w-3.5" />
-                                    Buat Paklaring
-                                </Link>
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Status strip */}
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="outline" className="gap-1.5 text-xs">
-                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                            {stats.totalPaklaring} total paklaring
-                        </Badge>
-                        <Badge variant="outline" className="gap-1.5 text-xs">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            {stats.activeEmployees} karyawan aktif
-                        </Badge>
-                        {stats.incompleteEmployees > 0 && (
-                            <Badge
-                                variant="secondary"
-                                className="gap-1.5 text-xs text-amber-600 dark:text-amber-400"
-                            >
-                                <AlertTriangle className="h-3 w-3" />
-                                {stats.incompleteEmployees} data belum lengkap
-                            </Badge>
-                        )}
-                    </div>
+            <div className="flex flex-col gap-4 md:gap-5">
+                <div className="flex flex-col">
+                    <Hero
+                        title={title}
+                        today={today}
+                        sites={sites}
+                        siteId={filters.site_id}
+                        isSuperAdmin={isSuperAdmin}
+                    />
+                    <MobileQuickActions />
                 </div>
 
-                <div className="flex flex-col gap-6 px-4 py-5 lg:px-6">
-                    {/* Stat cards */}
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <StatCard
-                            icon={FileText}
-                            label="Total Paklaring"
-                            value={stats.totalPaklaring}
-                        />
-                        <StatCard
-                            icon={CalendarClock}
-                            label="Dibuat Bulan Ini"
-                            value={stats.paklaringThisMonth}
-                        />
-                        <StatCard
-                            icon={UserCheck}
-                            label="Karyawan Aktif"
-                            value={stats.activeEmployees}
-                        />
-                        <StatCard
-                            icon={AlertTriangle}
-                            label="Data Belum Lengkap"
-                            value={stats.incompleteEmployees}
-                            tone={
-                                stats.incompleteEmployees > 0
-                                    ? 'warning'
-                                    : 'default'
-                            }
-                            action={
-                                stats.incompleteEmployees > 0
-                                    ? {
-                                          label: 'Lengkapi',
-                                          href: employeesIndex(),
-                                      }
-                                    : undefined
-                            }
-                        />
-                    </div>
-
-                    {/* Charts */}
-                    <div className="grid gap-4 lg:grid-cols-3">
-                        <Card className="lg:col-span-2">
-                            <CardHeader>
-                                <CardTitle>Tren Paklaring</CardTitle>
-                                <CardDescription>
-                                    Jumlah paklaring dibuat, 6 bulan terakhir
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ChartContainer
-                                    config={trendConfig}
-                                    className="aspect-auto h-[260px] w-full"
-                                >
-                                    <BarChart
-                                        data={monthlyTrend}
-                                        margin={{ left: 12, right: 12 }}
-                                    >
-                                        <CartesianGrid vertical={false} />
-                                        <XAxis
-                                            dataKey="month"
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickMargin={8}
-                                            tickFormatter={formatMonth}
-                                        />
-                                        <ChartTooltip
-                                            content={
-                                                <ChartTooltipContent
-                                                    labelFormatter={(value) =>
-                                                        formatMonth(
-                                                            String(value),
-                                                        )
-                                                    }
-                                                />
-                                            }
-                                        />
-                                        <Bar
-                                            dataKey="total"
-                                            fill="var(--color-total)"
-                                            radius={4}
-                                        />
-                                    </BarChart>
-                                </ChartContainer>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Status Karyawan</CardTitle>
-                                <CardDescription>
-                                    Aktif vs nonaktif
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ChartContainer
-                                    config={statusConfig}
-                                    className="mx-auto aspect-square max-h-[260px]"
-                                >
-                                    <PieChart>
-                                        <ChartTooltip
-                                            content={
-                                                <ChartTooltipContent
-                                                    hideLabel
-                                                    nameKey="status"
-                                                />
-                                            }
-                                        />
-                                        <Pie
-                                            data={statusData}
-                                            dataKey="total"
-                                            nameKey="status"
-                                            innerRadius={55}
-                                            isAnimationActive={false}
-                                        />
-                                        <ChartLegend
-                                            content={
-                                                <ChartLegendContent nameKey="status" />
-                                            }
-                                        />
-                                    </PieChart>
-                                </ChartContainer>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {auth.user.role === 'super_admin' &&
-                        paklaringBySite.length > 0 && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Paklaring per Site</CardTitle>
-                                    <CardDescription>
-                                        Distribusi paklaring di seluruh site
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <ChartContainer
-                                        config={siteConfig}
-                                        className="h-[220px] w-full"
-                                    >
-                                        <BarChart
-                                            data={paklaringBySite}
-                                            layout="vertical"
-                                            margin={{ left: 12 }}
-                                        >
-                                            <CartesianGrid horizontal={false} />
-                                            <XAxis type="number" hide />
-                                            <YAxis
-                                                dataKey="site"
-                                                type="category"
-                                                tickLine={false}
-                                                axisLine={false}
-                                                width={140}
-                                            />
-                                            <ChartTooltip
-                                                content={
-                                                    <ChartTooltipContent />
-                                                }
-                                            />
-                                            <Bar
-                                                dataKey="total"
-                                                fill="var(--color-total)"
-                                                radius={4}
-                                            />
-                                        </BarChart>
-                                    </ChartContainer>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                    {/* Recent activity */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Paklaring Terbaru</CardTitle>
-                            <CardDescription>
-                                Aktivitas pembuatan paklaring paling baru
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {recentPaklarings.length === 0 ? (
-                                <div className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
-                                    <FileText className="size-8 text-muted-foreground/50" />
-                                    <p>Belum ada paklaring dibuat.</p>
-                                    <Button
-                                        asChild
-                                        variant="outline"
-                                        size="sm"
-                                        className="mt-2"
-                                    >
-                                        <Link href={createPaklaring()}>
-                                            Buat paklaring pertama
-                                        </Link>
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="divide-y">
-                                    {recentPaklarings.map((paklaring) => (
-                                        <Link
-                                            key={paklaring.id}
-                                            href={showPaklaring(paklaring)}
-                                            className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors first:pt-0 last:pb-0 hover:bg-muted/40"
-                                        >
-                                            <Avatar>
-                                                <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-                                                    {getInitials(
-                                                        paklaring.nama,
-                                                    )}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="truncate font-medium">
-                                                    {paklaring.nama}
-                                                </p>
-                                                <p className="truncate text-xs text-muted-foreground">
-                                                    {paklaring.no_surat}
-                                                    {paklaring.site &&
-                                                        ` · ${paklaring.site.name}`}
-                                                </p>
-                                            </div>
-                                            <Badge
-                                                variant="secondary"
-                                                className="shrink-0"
-                                            >
-                                                {paklaring.signing_tanggal.slice(
-                                                    0,
-                                                    10,
-                                                )}
-                                            </Badge>
-                                        </Link>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))]">
+                    <StatTile
+                        label="Total paklaring"
+                        value={stats.totalPaklaring}
+                        note="Sejak aplikasi digunakan"
+                    />
+                    <StatTile
+                        label="Bulan ini"
+                        value={stats.paklaringThisMonth}
+                        note={
+                            prev
+                                ? `${monthLong.format(parseMonth(prev.month))}: ${nf.format(prev.total)}`
+                                : ''
+                        }
+                    />
+                    <StatTile
+                        label="Karyawan aktif"
+                        value={stats.activeEmployees}
+                        note={scopeNote}
+                    />
+                    <StatTile
+                        label="Karyawan belum lengkap"
+                        value={stats.incompleteEmployees}
+                        note="Data belum cukup untuk paklaring"
+                    />
                 </div>
+
+                <div className="grid grid-cols-1 gap-3 md:gap-4 xl:grid-cols-2">
+                    <MonthlyChart data={monthlyTrend} today={today} />
+                    <ReasonChart data={byReason} />
+                </div>
+
+                <RecentList items={recentPaklarings} />
             </div>
         </>
     );

@@ -14,21 +14,31 @@ use Inertia\Response;
 class DashboardController extends Controller
 {
     /** How many trailing months (including the current one) the trend chart covers. */
-    private const TREND_MONTHS = 6;
+    private const TREND_MONTHS = 12;
 
     /** How many recent paklarings to show in the activity list. */
-    private const RECENT_LIMIT = 6;
+    private const RECENT_LIMIT = 5;
 
     public function index(Request $request): Response
     {
         $user = $request->user();
         $isSuperAdmin = $user->isSuperAdmin();
 
+        // Super Admin may narrow the whole dashboard to one site; a Site
+        // Admin is always pinned to their own site and cannot override it.
+        $siteId = $isSuperAdmin
+            ? ($request->integer('site_id') ?: null)
+            : $user->site_id;
+
+        if ($isSuperAdmin && $siteId !== null && ! Site::query()->whereKey($siteId)->exists()) {
+            $siteId = null;
+        }
+
         $paklaringQuery = fn () => Paklaring::query()
-            ->when(! $isSuperAdmin, fn ($query) => $query->where('site_id', $user->site_id));
+            ->when($siteId !== null, fn ($query) => $query->where('site_id', $siteId));
 
         $employeeQuery = fn () => Employee::query()
-            ->when(! $isSuperAdmin, fn ($query) => $query->where('site_id', $user->site_id));
+            ->when($siteId !== null, fn ($query) => $query->where('site_id', $siteId));
 
         $activeEmployees = $employeeQuery()->where('is_active', true)->get();
 
@@ -42,17 +52,17 @@ class DashboardController extends Controller
                 'incompleteEmployees' => $activeEmployees->reject->is_complete_for_paklaring->count(),
             ],
             'monthlyTrend' => $this->monthlyTrend($paklaringQuery),
-            'employeeStatus' => [
-                'active' => $activeEmployees->count(),
-                'inactive' => $employeeQuery()->where('is_active', false)->count(),
-            ],
-            'paklaringBySite' => $isSuperAdmin ? $this->paklaringBySite() : [],
+            'byReason' => $this->byReason($paklaringQuery),
             'recentPaklarings' => $paklaringQuery()
                 ->with('site')
                 ->latest()
                 ->limit(self::RECENT_LIMIT)
                 ->get(),
             'site' => $isSuperAdmin ? null : $user->site,
+            'sites' => $isSuperAdmin
+                ? Site::query()->orderBy('name')->get(['id', 'code', 'name'])
+                : [],
+            'filters' => ['site_id' => $isSuperAdmin ? $siteId : null],
             'greeting' => $this->greeting(),
             'today' => $this->todayLabel(),
         ]);
@@ -120,15 +130,25 @@ class DashboardController extends Controller
     }
 
     /**
-     * @return array<int, array{site: string, total: int}>
+     * Paklaring count per termination reason over the same trailing window
+     * as the trend chart. Every option is present (zero when unused), sorted
+     * by count descending so the horizontal bar chart reads top-down.
+     *
+     * @param  Closure(): Builder<Paklaring>  $paklaringQuery
+     * @return array<int, array{reason: string, total: int}>
      */
-    private function paklaringBySite(): array
+    private function byReason(Closure $paklaringQuery): array
     {
-        return Site::query()
-            ->withCount('paklarings')
-            ->orderByDesc('paklarings_count')
-            ->get()
-            ->map(fn (Site $site) => ['site' => $site->name, 'total' => $site->paklarings_count])
+        $counts = $paklaringQuery()
+            ->where('created_at', '>=', now()->subMonthsNoOverflow(self::TREND_MONTHS - 1)->startOfMonth())
+            ->selectRaw('alasan_phk, count(*) as total')
+            ->groupBy('alasan_phk')
+            ->pluck('total', 'alasan_phk');
+
+        return collect(Paklaring::ALASAN_PHK_OPTIONS)
+            ->map(fn (string $reason) => ['reason' => $reason, 'total' => (int) ($counts[$reason] ?? 0)])
+            ->sortByDesc('total')
+            ->values()
             ->all();
     }
 }

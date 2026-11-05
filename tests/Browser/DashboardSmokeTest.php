@@ -24,17 +24,17 @@ test('dashboard renders welcome heading, stat cards, and charts', function () {
 
     $page = visit('/dashboard');
 
-    $page->assertSee('Total Paklaring')
-        ->assertSee('Karyawan Aktif')
-        ->assertSee('Tren Paklaring')
-        ->assertSee('Status Karyawan')
-        ->assertSee('Paklaring per Site')
-        ->assertSee('Head Office Jakarta')
+    $page->assertSee('Total paklaring')
+        ->assertSee('Karyawan aktif')
+        ->assertSee('Paklaring per bulan')
+        ->assertSee('Paklaring per alasan PHK')
+        ->assertSee('Semua site')
+        ->assertSee('Di semua site')
         ->assertNoJavascriptErrors()
         ->screenshot(true, 'dashboard-smoke');
 });
 
-test('site admin dashboard is scoped to their own site and hides the per-site chart', function () {
+test('site admin dashboard is scoped to their own site and hides the site filter', function () {
     $site = Site::factory()->create(['name' => 'Lahat Site']);
     $otherSite = Site::factory()->create(['name' => 'Head Office Jakarta']);
 
@@ -51,9 +51,9 @@ test('site admin dashboard is scoped to their own site and hides the per-site ch
 
     $page = visit('/dashboard');
 
-    $page->assertSee('Total Paklaring')
+    $page->assertSee('Total paklaring')
         ->assertSee('Lahat Site')
-        ->assertDontSee('Paklaring per Site')
+        ->assertDontSee('Semua site')
         ->assertDontSee('Head Office Jakarta')
         ->assertNoJavascriptErrors();
 });

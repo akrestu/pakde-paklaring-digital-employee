@@ -34,9 +34,7 @@ export function FormSheet({
                     <SheetTitle className="text-xl font-extrabold tracking-tight">
                         {title}
                     </SheetTitle>
-                    <SheetDescription
-                        className={description ? '' : 'sr-only'}
-                    >
+                    <SheetDescription className={description ? '' : 'sr-only'}>
                         {description ?? title}
                     </SheetDescription>
                 </SheetHeader>

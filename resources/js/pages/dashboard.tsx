@@ -2,7 +2,14 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ChevronRight, Layers, Moon, Plus, Sun, Upload } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
-import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from 'recharts';
+import {
+    Bar,
+    BarChart,
+    Cell,
+    ResponsiveContainer,
+    XAxis,
+    YAxis,
+} from 'recharts';
 import type { LabelProps } from 'recharts';
 import { ReasonBadge } from '@/components/reason-badge';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -95,7 +102,12 @@ const QUICK: {
     icon: LucideIcon;
     accent?: boolean;
 }[] = [
-    { label: 'Buat Paklaring', href: createPaklaring(), icon: Plus, accent: true },
+    {
+        label: 'Buat Paklaring',
+        href: createPaklaring(),
+        icon: Plus,
+        accent: true,
+    },
     { label: 'Buat Batch', href: createBatch(), icon: Layers },
     { label: 'Import Karyawan', href: employeesImport(), icon: Upload },
 ];
@@ -137,13 +149,19 @@ function Hero({
                 <button
                     type="button"
                     onClick={() => updateAppearance(dark ? 'light' : 'dark')}
-                    aria-label={dark ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'}
+                    aria-label={
+                        dark ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'
+                    }
                     className="ml-auto flex size-11 items-center justify-center rounded-full bg-white text-[#141414] outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                     {dark ? (
                         <Sun className="size-5" strokeWidth={1.8} aria-hidden />
                     ) : (
-                        <Moon className="size-5" strokeWidth={1.8} aria-hidden />
+                        <Moon
+                            className="size-5"
+                            strokeWidth={1.8}
+                            aria-hidden
+                        />
                     )}
                 </button>
             </div>
@@ -170,7 +188,11 @@ function Hero({
                                 : 'bg-white font-semibold',
                         )}
                     >
-                        <q.icon className="size-[18px]" strokeWidth={1.8} aria-hidden />
+                        <q.icon
+                            className="size-[18px]"
+                            strokeWidth={1.8}
+                            aria-hidden
+                        />
                         {q.label}
                     </Link>
                 ))}
@@ -201,7 +223,11 @@ function MobileQuickActions() {
                                 : 'bg-muted text-foreground',
                         )}
                     >
-                        <q.icon className="size-5" strokeWidth={1.8} aria-hidden />
+                        <q.icon
+                            className="size-5"
+                            strokeWidth={1.8}
+                            aria-hidden
+                        />
                     </span>
                     {q.label}
                 </Link>
@@ -220,7 +246,12 @@ function StatTile({
     note: string;
 }) {
     return (
-        <div className={cn(card, 'flex flex-col gap-1.5 p-4 md:px-5 md:py-[18px]')}>
+        <div
+            className={cn(
+                card,
+                'flex flex-col gap-1.5 p-4 md:px-5 md:py-[18px]',
+            )}
+        >
             <div className="min-h-[31px] text-xs leading-[1.3] font-semibold text-muted-foreground md:min-h-0 md:text-[13px]">
                 {label}
             </div>
@@ -330,7 +361,9 @@ function MonthlyChart({
     const ariaLabel = `Grafik batang jumlah paklaring per bulan, ${monthYear(data[0].month)} sampai ${monthYear(data[last].month)}. Tertinggi ${monthYear(peak.month)} sebanyak ${peak.total}.`;
 
     return (
-        <section className={cn(card, 'flex min-w-0 flex-col gap-3.5 p-4 md:p-5')}>
+        <section
+            className={cn(card, 'flex min-w-0 flex-col gap-3.5 p-4 md:p-5')}
+        >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="text-[15px] font-bold md:text-base">
                     Paklaring per bulan
@@ -369,7 +402,12 @@ function ReasonChart({ data }: { data: ReasonTotal[] }) {
     const max = Math.max(1, ...data.map((r) => r.total));
 
     return (
-        <section className={cn(card, 'flex min-w-0 flex-col gap-3 p-4 md:gap-4 md:p-5')}>
+        <section
+            className={cn(
+                card,
+                'flex min-w-0 flex-col gap-3 p-4 md:gap-4 md:p-5',
+            )}
+        >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="text-[15px] font-bold md:text-base">
                     <span className="md:hidden">Per alasan PHK</span>
@@ -393,7 +431,9 @@ function ReasonChart({ data }: { data: ReasonTotal[] }) {
                             className="flex flex-col gap-[5px] text-[13px] md:grid md:grid-cols-[96px_minmax(0,1fr)_72px] md:items-center md:gap-3"
                         >
                             <div className="flex justify-between gap-2 md:contents">
-                                <span className="font-semibold">{r.reason}</span>
+                                <span className="font-semibold">
+                                    {r.reason}
+                                </span>
                                 <span className="tabular font-bold md:order-last md:text-right">
                                     {nf.format(r.total)}{' '}
                                     <span className="hidden font-normal text-muted-foreground md:inline">
@@ -430,7 +470,11 @@ function RecentList({ items }: { items: Paklaring[] }) {
                     className="flex min-h-11 items-center gap-1 rounded-full text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     Lihat semua
-                    <ChevronRight className="size-4" strokeWidth={1.8} aria-hidden />
+                    <ChevronRight
+                        className="size-4"
+                        strokeWidth={1.8}
+                        aria-hidden
+                    />
                 </Link>
             </div>
 
@@ -455,7 +499,9 @@ function RecentList({ items }: { items: Paklaring[] }) {
                                 </span>
                                 <span className="tabular text-xs text-muted-foreground">
                                     <span className="md:hidden">
-                                        {dateShort.format(new Date(p.created_at))}
+                                        {dateShort.format(
+                                            new Date(p.created_at),
+                                        )}
                                     </span>
                                     <span className="hidden md:inline">
                                         NRPP {p.nrpp}

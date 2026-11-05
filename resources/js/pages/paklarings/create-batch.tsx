@@ -300,8 +300,8 @@ export default function CreateBatch({
         setAttempted(false);
 
         if (step === 0 && !fields.signing_lokasi) {
-            const lokasi = selected.find((e) => e.site?.default_location)
-                ?.site?.default_location;
+            const lokasi = selected.find((e) => e.site?.default_location)?.site
+                ?.default_location;
 
             if (lokasi) {
                 setField('signing_lokasi', lokasi);
@@ -473,9 +473,15 @@ export default function CreateBatch({
                                                     aria-label="Pilih semua"
                                                 />
                                             </span>
-                                            <span role="columnheader">Nama</span>
-                                            <span role="columnheader">NRPP</span>
-                                            <span role="columnheader">Lokasi</span>
+                                            <span role="columnheader">
+                                                Nama
+                                            </span>
+                                            <span role="columnheader">
+                                                NRPP
+                                            </span>
+                                            <span role="columnheader">
+                                                Lokasi
+                                            </span>
                                             <span role="columnheader">
                                                 Data paklaring
                                             </span>
@@ -499,7 +505,9 @@ export default function CreateBatch({
                                                     >
                                                         <Checkbox
                                                             checked={on}
-                                                            onCheckedChange={(v) =>
+                                                            onCheckedChange={(
+                                                                v,
+                                                            ) =>
                                                                 toggle(
                                                                     e.id,
                                                                     v === true,
@@ -524,7 +532,8 @@ export default function CreateBatch({
                                                         role="cell"
                                                         className="truncate"
                                                     >
-                                                        {e.site?.name ?? e.lokasi}
+                                                        {e.site?.name ??
+                                                            e.lokasi}
                                                     </span>
                                                     <span role="cell">
                                                         <CompletenessBadge
@@ -574,7 +583,10 @@ export default function CreateBatch({
                                                 value={option}
                                                 checked={on}
                                                 onChange={() =>
-                                                    setField('alasan_phk', option)
+                                                    setField(
+                                                        'alasan_phk',
+                                                        option,
+                                                    )
                                                 }
                                                 className="size-[18px] accent-[var(--primary)]"
                                             />
@@ -687,7 +699,9 @@ export default function CreateBatch({
                                     >
                                         <span role="columnheader">Nama</span>
                                         <span role="columnheader">NRPP</span>
-                                        <span role="columnheader">No. surat</span>
+                                        <span role="columnheader">
+                                            No. surat
+                                        </span>
                                         <span role="columnheader">Status</span>
                                     </div>
                                     {selected.map((e) => {
@@ -728,16 +742,22 @@ export default function CreateBatch({
                                                             <Input
                                                                 aria-label={`No. surat ${e.nama}`}
                                                                 value={
-                                                                    noSurats[e.id] ??
-                                                                    ''
+                                                                    noSurats[
+                                                                        e.id
+                                                                    ] ?? ''
                                                                 }
-                                                                onChange={(ev) =>
+                                                                onChange={(
+                                                                    ev,
+                                                                ) =>
                                                                     setNoSurats(
-                                                                        (prev) => ({
+                                                                        (
+                                                                            prev,
+                                                                        ) => ({
                                                                             ...prev,
-                                                                            [e.id]: ev
-                                                                                .target
-                                                                                .value,
+                                                                            [e.id]:
+                                                                                ev
+                                                                                    .target
+                                                                                    .value,
                                                                         }),
                                                                     )
                                                                 }

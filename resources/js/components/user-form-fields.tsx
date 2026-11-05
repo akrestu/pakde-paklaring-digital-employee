@@ -73,9 +73,7 @@ export function UserFormFields({
             </Field>
 
             <fieldset className="flex flex-col gap-2">
-                <legend className="mb-2 text-[13px] font-semibold">
-                    Role
-                </legend>
+                <legend className="mb-2 text-[13px] font-semibold">Role</legend>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {ROLES.map((r) => {
                         const on = role === r.value;

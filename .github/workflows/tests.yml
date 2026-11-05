@@ -12,6 +12,9 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
 
     steps:
       - name: Checkout code
@@ -31,8 +34,14 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Create SQLite database
+        run: touch database/database.sqlite
+
       - name: Setup Application
         run: composer setup
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
 
       - name: Run CI Checks
         run: composer ci:check

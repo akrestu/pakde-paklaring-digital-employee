@@ -11,7 +11,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
             <Head title="Verifikasi email" />
 
             {status === 'verification-link-sent' && (
-                <div className="mb-4 text-center text-sm font-medium rounded-md bg-success-soft px-4 py-3 text-success">
+                <div className="mb-4 rounded-md bg-success-soft px-4 py-3 text-center text-sm font-medium text-success">
                     Link verifikasi baru sudah dikirim ke email yang Anda
                     daftarkan.
                 </div>
@@ -20,7 +20,11 @@ export default function VerifyEmail({ status }: { status?: string }) {
             <Form {...send.form()} className="space-y-6 text-center">
                 {({ processing }) => (
                     <>
-                        <Button size="lg" className="w-full" loading={processing}>
+                        <Button
+                            size="lg"
+                            className="w-full"
+                            loading={processing}
+                        >
                             Kirim ulang email verifikasi
                         </Button>
 

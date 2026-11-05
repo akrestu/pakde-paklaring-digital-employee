@@ -320,7 +320,9 @@ function EmployeeCombobox({
                                     </span>
                                     <span className="tabular truncate text-xs text-muted-foreground">
                                         NRPP {e.nrpp}
-                                        {e.site?.name ? ` · ${e.site.name}` : ''}
+                                        {e.site?.name
+                                            ? ` · ${e.site.name}`
+                                            : ''}
                                         {!e.is_active ? ' · Nonaktif' : ''}
                                     </span>
                                 </span>
@@ -448,7 +450,11 @@ export function KaryawanStep({
                     >
                         <Input {...field('project')} />
                     </Field>
-                    <Field label="Lokasi" htmlFor="lokasi" error={errors.lokasi}>
+                    <Field
+                        label="Lokasi"
+                        htmlFor="lokasi"
+                        error={errors.lokasi}
+                    >
                         <Input {...field('lokasi')} />
                     </Field>
                 </div>

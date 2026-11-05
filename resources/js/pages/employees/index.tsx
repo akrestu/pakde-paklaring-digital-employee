@@ -144,9 +144,7 @@ export default function Index({
     function toggleAll(checked: boolean) {
         setSelectedIds((prev) => {
             const next = new Set(prev);
-            pageIds.forEach((id) =>
-                checked ? next.add(id) : next.delete(id),
-            );
+            pageIds.forEach((id) => (checked ? next.add(id) : next.delete(id)));
 
             return next;
         });
@@ -168,9 +166,9 @@ export default function Index({
 
     const hasFilters = Boolean(
         filters.search ||
-            filters.site_id ||
-            filters.kelengkapan ||
-            filters.status,
+        filters.site_id ||
+        filters.kelengkapan ||
+        filters.status,
     );
     const summary = `${nf.format(stats.active)} aktif · ${nf.format(stats.incomplete)} belum lengkap`;
 
@@ -376,7 +374,9 @@ export default function Index({
                                             </span>
                                             <span className="tabular truncate text-xs text-muted-foreground">
                                                 NRPP {e.nrpp} ·{' '}
-                                                {e.site?.name ?? e.lokasi ?? '–'}
+                                                {e.site?.name ??
+                                                    e.lokasi ??
+                                                    '–'}
                                             </span>
                                             <span>
                                                 <StatusPill
@@ -390,7 +390,10 @@ export default function Index({
                         </ul>
 
                         <section
-                            className={cn(card, 'hidden overflow-hidden md:block')}
+                            className={cn(
+                                card,
+                                'hidden overflow-hidden md:block',
+                            )}
                         >
                             <div className="overflow-x-auto">
                                 <div
@@ -620,7 +623,9 @@ export default function Index({
                             className="h-11 rounded-full px-3 text-sm font-semibold outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent md:px-4"
                         >
                             <span className="md:hidden">Batal</span>
-                            <span className="hidden md:inline">Batal pilih</span>
+                            <span className="hidden md:inline">
+                                Batal pilih
+                            </span>
                         </button>
                         <button
                             type="button"
@@ -640,7 +645,9 @@ export default function Index({
 
             <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
                 <DialogContent className="rounded-xl">
-                    <DialogTitle>Hapus {selectedIds.size} karyawan?</DialogTitle>
+                    <DialogTitle>
+                        Hapus {selectedIds.size} karyawan?
+                    </DialogTitle>
                     <DialogDescription>
                         Paklaring yang sudah pernah dibuat untuk karyawan ini
                         tidak terpengaruh. Tindakan ini tidak bisa dibatalkan.

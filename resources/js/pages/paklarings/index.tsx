@@ -143,9 +143,7 @@ export default function Index({
     function toggleAllOnPage(checked: boolean) {
         setSelectedIds((prev) => {
             const next = new Set(prev);
-            pageIds.forEach((id) =>
-                checked ? next.add(id) : next.delete(id),
-            );
+            pageIds.forEach((id) => (checked ? next.add(id) : next.delete(id)));
 
             return next;
         });
@@ -181,10 +179,10 @@ export default function Index({
 
     const hasFilters = Boolean(
         filters.search ||
-            filters.site_id ||
-            filters.alasan_phk ||
-            filters.date_from ||
-            filters.date_to,
+        filters.site_id ||
+        filters.alasan_phk ||
+        filters.date_from ||
+        filters.date_to,
     );
     const scope = filters.site_id
         ? `di ${sites.find((s) => String(s.id) === String(filters.site_id))?.name ?? 'site terpilih'}`
@@ -238,7 +236,9 @@ export default function Index({
                     type="date"
                     value={filters.date_from ?? ''}
                     max={filters.date_to}
-                    onChange={(e) => applyFilters({ date_from: e.target.value })}
+                    onChange={(e) =>
+                        applyFilters({ date_from: e.target.value })
+                    }
                     className={cn(fieldControl, 'tabular')}
                 />
             </label>
@@ -407,7 +407,11 @@ export default function Index({
                                 variant="outline"
                                 onClick={() => {
                                     setSearch('');
-                                    router.get(index.url(), {}, { replace: true });
+                                    router.get(
+                                        index.url(),
+                                        {},
+                                        { replace: true },
+                                    );
                                 }}
                             >
                                 Hapus filter
@@ -473,7 +477,10 @@ export default function Index({
 
                         {/* Desktop table */}
                         <section
-                            className={cn(card, 'hidden overflow-hidden md:block')}
+                            className={cn(
+                                card,
+                                'hidden overflow-hidden md:block',
+                            )}
                         >
                             <div className="overflow-x-auto">
                                 <div
@@ -506,7 +513,9 @@ export default function Index({
                                                 aria-label="Pilih semua baris"
                                             />
                                         </span>
-                                        <span role="columnheader">No. Surat</span>
+                                        <span role="columnheader">
+                                            No. Surat
+                                        </span>
                                         <span role="columnheader">Nama</span>
                                         <span role="columnheader">NRPP</span>
                                         <span role="columnheader">Alasan</span>
@@ -547,7 +556,10 @@ export default function Index({
                                                         aria-label={`Pilih ${p.no_surat}`}
                                                     />
                                                 </span>
-                                                <span role="cell" className="min-w-0">
+                                                <span
+                                                    role="cell"
+                                                    className="min-w-0"
+                                                >
                                                     <Link
                                                         href={show(p)}
                                                         className="tabular block truncate font-bold hover:underline"
@@ -572,7 +584,10 @@ export default function Index({
                                                         reason={p.alasan_phk}
                                                     />
                                                 </span>
-                                                <span role="cell" className="tabular">
+                                                <span
+                                                    role="cell"
+                                                    className="tabular"
+                                                >
                                                     {formatDate(p.doe)}
                                                 </span>
                                                 <span
@@ -580,7 +595,9 @@ export default function Index({
                                                     className="flex min-w-0 flex-col"
                                                 >
                                                     <span className="tabular">
-                                                        {formatDate(p.created_at)}
+                                                        {formatDate(
+                                                            p.created_at,
+                                                        )}
                                                     </span>
                                                     <span className="truncate text-xs text-muted-foreground">
                                                         {[
@@ -626,7 +643,9 @@ export default function Index({
                                                         target="_blank"
                                                         rel="noreferrer"
                                                         aria-label={`Unduh PDF ${p.no_surat}`}
-                                                        className={iconLinkClass}
+                                                        className={
+                                                            iconLinkClass
+                                                        }
                                                     >
                                                         <Download
                                                             className="size-[18px]"
@@ -658,7 +677,9 @@ export default function Index({
                                 <select
                                     value={perPage}
                                     onChange={(e) =>
-                                        applyFilters({ per_page: e.target.value })
+                                        applyFilters({
+                                            per_page: e.target.value,
+                                        })
                                     }
                                     className="h-9 rounded-full border border-border bg-card px-2.5 text-[13px] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     aria-label="Jumlah baris per halaman"
@@ -724,7 +745,9 @@ export default function Index({
                             className="h-11 rounded-full px-3 text-sm font-semibold outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent md:px-4"
                         >
                             <span className="md:hidden">Batal</span>
-                            <span className="hidden md:inline">Batal pilih</span>
+                            <span className="hidden md:inline">
+                                Batal pilih
+                            </span>
                         </button>
                         <button
                             type="button"
@@ -744,7 +767,9 @@ export default function Index({
 
             <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
                 <DialogContent className="rounded-xl">
-                    <DialogTitle>Hapus {selectedIds.size} paklaring?</DialogTitle>
+                    <DialogTitle>
+                        Hapus {selectedIds.size} paklaring?
+                    </DialogTitle>
                     <DialogDescription>
                         Surat dan file PDF-nya akan dihapus permanen. Tindakan
                         ini tidak bisa dibatalkan.

@@ -106,7 +106,9 @@ export default function Show({
                             </section>
 
                             <section className="flex flex-col gap-4 rounded-lg bg-card p-5 shadow-[0_1px_2px_oklch(0.191_0_0/0.06)]">
-                                <h2 className={sectionLabel}>Identitas surat</h2>
+                                <h2 className={sectionLabel}>
+                                    Identitas surat
+                                </h2>
                                 <Rows
                                     rows={[
                                         ['No. surat', paklaring.no_surat],

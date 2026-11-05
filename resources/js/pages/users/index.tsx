@@ -116,7 +116,10 @@ export default function Index({
                         </ul>
 
                         <section
-                            className={cn(card, 'hidden overflow-hidden md:block')}
+                            className={cn(
+                                card,
+                                'hidden overflow-hidden md:block',
+                            )}
                         >
                             <div className="overflow-x-auto">
                                 <div

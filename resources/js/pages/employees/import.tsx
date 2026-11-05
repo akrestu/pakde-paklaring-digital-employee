@@ -340,7 +340,8 @@ export default function Import({ sites }: { sites: Site[] }) {
                                                 className={cn(
                                                     GRID,
                                                     'border-t border-border py-2.5 text-[13px]',
-                                                    bad && 'bg-destructive-soft',
+                                                    bad &&
+                                                        'bg-destructive-soft',
                                                 )}
                                             >
                                                 <span
@@ -384,7 +385,9 @@ export default function Import({ sites }: { sites: Site[] }) {
                                                 >
                                                     {bad
                                                         ? r.message
-                                                        : STATUS_LABEL[r.status]}
+                                                        : STATUS_LABEL[
+                                                              r.status
+                                                          ]}
                                                 </span>
                                             </div>
                                         );
@@ -437,7 +440,10 @@ export default function Import({ sites }: { sites: Site[] }) {
                             {resultTiles.map(([label, value, color]) => (
                                 <div
                                     key={label}
-                                    className={cn(card, 'flex flex-col gap-1.5 p-5')}
+                                    className={cn(
+                                        card,
+                                        'flex flex-col gap-1.5 p-5',
+                                    )}
                                 >
                                     <div
                                         className={cn(

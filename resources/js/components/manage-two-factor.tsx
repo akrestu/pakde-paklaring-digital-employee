@@ -81,9 +81,9 @@ export default function ManageTwoFactor(props: Props) {
             ) : (
                 <div className="flex flex-col items-start justify-start space-y-4">
                     <p className="text-sm text-muted-foreground">
-                        Setelah verifikasi dua langkah aktif, Anda akan diminta kode
-                        dari aplikasi authenticator (TOTP) di ponsel setiap kali
-                        masuk.
+                        Setelah verifikasi dua langkah aktif, Anda akan diminta
+                        kode dari aplikasi authenticator (TOTP) di ponsel setiap
+                        kali masuk.
                     </p>
 
                     <div>

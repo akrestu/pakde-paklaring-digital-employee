@@ -55,7 +55,12 @@ function SummaryGroup({
         <div className="flex flex-col gap-3 rounded-lg bg-muted/60 p-4 md:p-5">
             <div className="flex items-center justify-between gap-3">
                 <h2 className="text-base font-bold">{title}</h2>
-                <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onEdit}
+                >
                     Ubah
                 </Button>
             </div>
@@ -161,9 +166,7 @@ export function PaklaringWizard({
                     employee.versatility ?? prev.final_versatility,
                 doh: employee.doh ? employee.doh.slice(0, 10) : prev.doh,
                 signing_lokasi:
-                    prev.signing_lokasi ||
-                    employeeSite?.default_location ||
-                    '',
+                    prev.signing_lokasi || employeeSite?.default_location || '',
             };
         });
     }
@@ -391,8 +394,8 @@ export function PaklaringWizard({
                             role="alert"
                             className="text-sm font-semibold text-destructive"
                         >
-                            Lengkapi semua kolom wajib sebelum lanjut ke
-                            langkah berikutnya.
+                            Lengkapi semua kolom wajib sebelum lanjut ke langkah
+                            berikutnya.
                         </p>
                     )}
 

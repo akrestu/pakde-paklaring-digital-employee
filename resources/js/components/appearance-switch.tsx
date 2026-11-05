@@ -40,7 +40,11 @@ export function AppearanceSwitch({ className }: { className?: string }) {
                                 : 'text-muted-foreground hover:text-foreground',
                         )}
                     >
-                        <Icon className="size-4" strokeWidth={1.8} aria-hidden />
+                        <Icon
+                            className="size-4"
+                            strokeWidth={1.8}
+                            aria-hidden
+                        />
                     </button>
                 );
             })}

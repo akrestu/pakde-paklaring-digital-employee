@@ -97,11 +97,7 @@ export function SiteFormFields({
                 </Field>
             </div>
 
-            <input
-                type="hidden"
-                name="is_active"
-                value={active ? '1' : '0'}
-            />
+            <input type="hidden" name="is_active" value={active ? '1' : '0'} />
             <button
                 type="button"
                 role="switch"

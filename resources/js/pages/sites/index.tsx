@@ -16,8 +16,7 @@ const GRID =
 
 function signer(site: Site): string {
     return (
-        [site.signer_name, site.signer_title].filter(Boolean).join(' · ') ||
-        '–'
+        [site.signer_name, site.signer_title].filter(Boolean).join(' · ') || '–'
     );
 }
 
@@ -79,7 +78,9 @@ export default function Index({ sites }: { sites: SiteRow[] }) {
                                 aria-hidden
                             />
                         </span>
-                        <div className="text-base font-bold">Belum ada site</div>
+                        <div className="text-base font-bold">
+                            Belum ada site
+                        </div>
                         <p className="max-w-sm text-sm text-muted-foreground">
                             Tambahkan site pertama beserta penandatangan
                             suratnya.
@@ -116,7 +117,10 @@ export default function Index({ sites }: { sites: SiteRow[] }) {
                         </ul>
 
                         <section
-                            className={cn(card, 'hidden overflow-hidden md:block')}
+                            className={cn(
+                                card,
+                                'hidden overflow-hidden md:block',
+                            )}
                         >
                             <div className="overflow-x-auto">
                                 <div

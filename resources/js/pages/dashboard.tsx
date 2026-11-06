@@ -135,6 +135,10 @@ function Hero({
                 alt=""
                 className="absolute inset-0 -z-30 size-full object-cover object-[62%_70%] md:object-[60%_64%]"
             />
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-2/3 bg-gradient-to-t from-black/55 via-black/20 to-transparent"
+            />
 
             {/* Mobile top row: logo + theme toggle (no shell header here). */}
             <div className="flex items-center gap-2.5 md:hidden">

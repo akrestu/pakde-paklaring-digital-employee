@@ -13,6 +13,7 @@ import {
 import type { LabelProps } from 'recharts';
 import { ReasonBadge } from '@/components/reason-badge';
 import { useAppearance } from '@/hooks/use-appearance';
+import { useInitials } from '@/hooks/use-initials';
 import { alasanStyle } from '@/lib/alasan-phk';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -23,6 +24,7 @@ import {
     index as paklaringsIndex,
     show as showPaklaring,
 } from '@/routes/paklarings';
+import { edit as profileEdit } from '@/routes/profile';
 import type { Auth, Paklaring, Site } from '@/types';
 
 type MonthlyTrend = { month: string; total: number };
@@ -112,51 +114,75 @@ const QUICK: {
     { label: 'Import Karyawan', href: employeesImport(), icon: Upload },
 ];
 
+/** Same format as MyWahana's Beranda hero: identity row, then a large headline. */
 function Hero({
-    title,
+    greeting,
     today,
+    user,
+    siteName,
     sites,
     siteId,
     isSuperAdmin,
 }: {
-    title: string;
+    greeting: string;
     today: string;
+    user: Auth['user'];
+    siteName?: string;
     sites: Props['sites'];
     siteId: number | null;
     isSuperAdmin: boolean;
 }) {
     const { resolvedAppearance, updateAppearance } = useAppearance();
+    const getInitials = useInitials();
     const dark = resolvedAppearance === 'dark';
 
     return (
-        <section className="relative isolate -mx-4 -mt-4 flex flex-col gap-[22px] overflow-hidden bg-[#30485F] px-5 pt-[calc(16px+env(safe-area-inset-top))] pb-[72px] text-white md:mx-0 md:mt-0 md:min-h-56 md:justify-between md:gap-7 md:rounded-[28px] md:px-7 md:py-6">
+        <section className="relative isolate -mx-4 -mt-4 overflow-hidden bg-[#30485F] px-5 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[76px] text-white md:mx-0 md:mt-0 md:rounded-[22px] md:pt-6">
             <img
                 src="/images/mountain.jpg"
                 alt=""
-                className="absolute inset-0 -z-30 size-full object-cover object-[62%_70%] md:object-[60%_64%]"
+                className="absolute inset-0 -z-20 size-full object-cover object-[60%_70%]"
             />
             <div
                 aria-hidden
-                className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-2/3 bg-gradient-to-t from-black/55 via-black/20 to-transparent"
+                className="absolute inset-0 -z-10 bg-gradient-to-b from-black/55 via-black/20 to-black/5"
             />
 
-            {/* Mobile top row: logo + theme toggle (no shell header here). */}
-            <div className="flex items-center gap-2.5 md:hidden">
-                <img
-                    src="/images/logo.png"
-                    alt="Logo WBK"
-                    className="size-8 object-contain"
-                />
-                <span className="text-base font-extrabold tracking-[-0.01em]">
-                    PAKDE
-                </span>
+            <div className="flex items-center justify-between gap-3">
+                <Link
+                    href={profileEdit()}
+                    className="flex min-w-0 items-center gap-3 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                    {user.avatar ? (
+                        <img
+                            src={user.avatar}
+                            alt=""
+                            className="size-[42px] shrink-0 rounded-full object-cover"
+                        />
+                    ) : (
+                        <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-[#141414]">
+                            {getInitials(user.name)}
+                        </span>
+                    )}
+                    <span className="min-w-0">
+                        <span className="block truncate text-xs text-white/85">
+                            {today}
+                            {siteName ? ` · ${siteName}` : ''}
+                        </span>
+                        <span className="block truncate text-lg font-bold">
+                            {greeting}
+                        </span>
+                    </span>
+                </Link>
+
+                {/* Desktop keeps this switch in the sidebar footer. */}
                 <button
                     type="button"
                     onClick={() => updateAppearance(dark ? 'light' : 'dark')}
                     aria-label={
                         dark ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'
                     }
-                    className="ml-auto flex size-11 items-center justify-center rounded-full bg-white text-[#141414] outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/95 text-[#141414] outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-accent md:hidden"
                 >
                     {dark ? (
                         <Sun className="size-5" strokeWidth={1.8} aria-hidden />
@@ -170,54 +196,26 @@ function Hero({
                 </button>
             </div>
 
-            <div className="flex flex-col gap-[22px] md:flex-row md:flex-wrap md:items-start md:justify-between md:gap-3">
-                <div className="flex flex-col gap-1 md:gap-1.5">
-                    <div className="text-[13px] font-medium">{today}</div>
-                    <h1 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.025em] md:text-[34px]">
-                        {title}
-                    </h1>
-                </div>
+            <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
+                <h1 className="text-[26px] leading-[1.15] font-extrabold tracking-tight">
+                    Siap terbitkan paklaring
+                    <br />
+                    hari ini?
+                </h1>
                 {isSuperAdmin && <SiteFilter sites={sites} value={siteId} />}
-            </div>
-
-            <div className="hidden flex-wrap gap-2.5 md:flex">
-                {QUICK.map((q) => (
-                    <Link
-                        key={q.label}
-                        href={q.href}
-                        className={cn(
-                            'flex h-11 items-center gap-2 rounded-full px-[18px] text-sm text-[#141414] outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                            q.accent
-                                ? 'bg-accent px-5 font-bold'
-                                : 'bg-white font-semibold',
-                        )}
-                    >
-                        <q.icon
-                            className="size-[18px]"
-                            strokeWidth={1.8}
-                            aria-hidden
-                        />
-                        {q.label}
-                    </Link>
-                ))}
             </div>
         </section>
     );
 }
 
-function MobileQuickActions() {
+function QuickActions() {
     return (
-        <div
-            className={cn(
-                card,
-                'relative -mt-12 grid grid-cols-3 gap-1 p-3 shadow-[0_8px_24px_rgba(20,20,20,0.08)] md:hidden',
-            )}
-        >
+        <div className="relative z-10 -mt-12 grid grid-cols-3 gap-1 rounded-[22px] bg-card p-3 shadow-[0_8px_24px_oklch(0.191_0_0/0.07)]">
             {QUICK.map((q) => (
                 <Link
                     key={q.label}
                     href={q.href}
-                    className="flex min-h-[84px] flex-col items-center justify-center gap-2 rounded-md text-center text-xs leading-tight font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex min-h-[84px] flex-col items-center justify-center gap-2 rounded-[14px] text-center text-xs leading-tight font-semibold transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:min-h-16 md:flex-row md:justify-start md:gap-3 md:px-3 md:text-left md:text-sm"
                 >
                     <span
                         className={cn(
@@ -545,7 +543,7 @@ export default function Dashboard({
     const { auth } = usePage<{ auth: Auth }>().props;
     const isSuperAdmin = auth.user.role === 'super_admin';
     const firstName = auth.user.name.split(' ')[0];
-    const title = `${greeting.text.charAt(0)}${greeting.text.slice(1).toLowerCase()}, ${firstName}`;
+    const greetingLine = `${greeting.text.charAt(0)}${greeting.text.slice(1).toLowerCase()}, ${firstName}`;
 
     const selectedSite = sites.find((s) => s.id === filters.site_id);
     const scopeNote = site
@@ -563,13 +561,15 @@ export default function Dashboard({
             <div className="flex flex-col gap-4 md:gap-5">
                 <div className="flex flex-col">
                     <Hero
-                        title={title}
+                        greeting={greetingLine}
                         today={today}
+                        user={auth.user}
+                        siteName={site?.name ?? selectedSite?.name}
                         sites={sites}
                         siteId={filters.site_id}
                         isSuperAdmin={isSuperAdmin}
                     />
-                    <MobileQuickActions />
+                    <QuickActions />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))]">

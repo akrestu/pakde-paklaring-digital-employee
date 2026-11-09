@@ -6,51 +6,64 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    useSidebar,
+} from '@/components/ui/sidebar';
+import { UserInfo } from '@/components/user-info';
 import { UserMenuContent } from '@/components/user-menu-content';
-import { useInitials } from '@/hooks/use-initials';
 import type { Auth } from '@/types';
 
-/** Avatar (ink + accent initials), name and role (Sidebar.html footer). */
+/** Role chip above the account button, same format as MyWahana's sidebar footer. */
 export function NavUser() {
     const {
         props: { auth },
     } = usePage<{ auth: Auth }>();
-    const getInitials = useInitials();
+    const { state, isMobile } = useSidebar();
 
     if (!auth.user) {
         return null;
     }
 
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger
-                className="flex w-full items-center gap-2.5 rounded-2xl p-1 text-left transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-muted"
-                data-test="sidebar-menu-button"
-            >
-                <span className="flex size-10 flex-none items-center justify-center rounded-full bg-primary text-[13px] font-bold text-accent">
-                    {getInitials(auth.user.name)}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-bold">
-                        {auth.user.name}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
+        <SidebarMenu>
+            <SidebarMenuItem>
+                <div className="mb-1 flex items-center gap-2 px-2 py-1 group-data-[collapsible=icon]:hidden">
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                         {ROLE_LABEL[auth.user.role] ?? auth.user.role}
                     </span>
-                </span>
-                <ChevronsUpDown
-                    className="size-4 shrink-0 text-muted-foreground"
-                    aria-hidden
-                />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-                className="w-(--radix-dropdown-menu-trigger-width) min-w-60 rounded-2xl"
-                align="end"
-                side="top"
-                sideOffset={8}
-            >
-                <UserMenuContent user={auth.user} />
-            </DropdownMenuContent>
-        </DropdownMenu>
+                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <SidebarMenuButton
+                            size="lg"
+                            className="group text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent"
+                            data-test="sidebar-menu-button"
+                        >
+                            <UserInfo user={auth.user} />
+                            <ChevronsUpDown
+                                className="ml-auto size-4 shrink-0 opacity-50"
+                                aria-hidden
+                            />
+                        </SidebarMenuButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                        align="end"
+                        side={
+                            isMobile
+                                ? 'bottom'
+                                : state === 'collapsed'
+                                  ? 'left'
+                                  : 'bottom'
+                        }
+                    >
+                        <UserMenuContent user={auth.user} />
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </SidebarMenuItem>
+        </SidebarMenu>
     );
 }

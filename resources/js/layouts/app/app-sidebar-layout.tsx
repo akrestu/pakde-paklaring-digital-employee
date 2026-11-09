@@ -41,7 +41,7 @@ export default function AppSidebarLayout({
         <AppShell variant="sidebar">
             <AppSidebar />
             <AppContent variant="sidebar" className="min-w-0 overflow-x-clip">
-                {/* The dashboard hero carries its own logo row on mobile. */}
+                {/* The dashboard hero carries its own identity row on mobile. */}
                 {!url.startsWith('/dashboard') && (
                     <MobileHeader title={title} />
                 )}

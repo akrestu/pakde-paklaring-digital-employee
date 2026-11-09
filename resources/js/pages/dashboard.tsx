@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ChevronRight, Layers, Moon, Plus, Sun, Upload } from 'lucide-react';
+import { ChevronRight, Layers, Plus, Upload } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -12,8 +12,6 @@ import {
 } from 'recharts';
 import type { LabelProps } from 'recharts';
 import { ReasonBadge } from '@/components/reason-badge';
-import { useAppearance } from '@/hooks/use-appearance';
-import { useInitials } from '@/hooks/use-initials';
 import { alasanStyle } from '@/lib/alasan-phk';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -24,7 +22,6 @@ import {
     index as paklaringsIndex,
     show as showPaklaring,
 } from '@/routes/paklarings';
-import { edit as profileEdit } from '@/routes/profile';
 import type { Auth, Paklaring, Site } from '@/types';
 
 type MonthlyTrend = { month: string; total: number };
@@ -73,7 +70,7 @@ function SiteFilter({
     value: number | null;
 }) {
     return (
-        <label className="flex h-11 items-center gap-2 self-start rounded-full bg-white pr-3.5 pl-4 text-[13px] font-semibold text-[#141414]">
+        <label className="flex h-11 items-center gap-2 rounded-full border border-border bg-card pr-3.5 pl-4 text-sm font-semibold text-foreground">
             Site
             <select
                 aria-label="Filter site"
@@ -85,7 +82,7 @@ function SiteFilter({
                         { preserveScroll: true, replace: true },
                     )
                 }
-                className="rounded-md border-0 bg-transparent text-sm font-bold text-[#141414] outline-offset-2"
+                className="rounded-md border-0 bg-transparent text-sm font-bold text-foreground outline-offset-2"
             >
                 <option value="">Semua site</option>
                 {sites.map((s) => (
@@ -114,123 +111,71 @@ const QUICK: {
     { label: 'Import Karyawan', href: employeesImport(), icon: Upload },
 ];
 
-/** Same format as MyWahana's Beranda hero: identity row, then a large headline. */
+/** Same format as MyWahana's admin Ringkasan hero: text anchored to the bottom. */
 function Hero({
     greeting,
     today,
-    user,
-    siteName,
-    sites,
-    siteId,
-    isSuperAdmin,
+    activeEmployees,
+    scope,
 }: {
     greeting: string;
     today: string;
-    user: Auth['user'];
-    siteName?: string;
-    sites: Props['sites'];
-    siteId: number | null;
-    isSuperAdmin: boolean;
+    activeEmployees: number;
+    scope: string;
 }) {
-    const { resolvedAppearance, updateAppearance } = useAppearance();
-    const getInitials = useInitials();
-    const dark = resolvedAppearance === 'dark';
-
     return (
-        <section className="relative isolate -mx-4 -mt-4 overflow-hidden bg-[#30485F] px-5 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[76px] text-white md:mx-0 md:mt-0 md:rounded-[22px] md:pt-6">
+        <section className="relative isolate -mx-4 -mt-4 flex min-h-44 flex-col justify-end overflow-hidden bg-[#30485F] px-5 pt-10 pb-6 text-white md:mx-0 md:mt-0 md:min-h-56 md:rounded-[28px] md:px-7 md:py-6">
             <img
                 src="/images/mountain.jpg"
                 alt=""
-                className="absolute inset-0 -z-20 size-full object-cover object-[60%_70%]"
+                className="absolute inset-0 -z-10 size-full object-cover object-[62%_70%] md:object-[60%_64%]"
             />
             <div
                 aria-hidden
-                className="absolute inset-0 -z-10 bg-gradient-to-b from-black/55 via-black/20 to-black/5"
+                className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(0,0,0,0)_45%,rgba(0,0,0,0.55)_100%)]"
             />
-
-            <div className="flex items-center justify-between gap-3">
-                <Link
-                    href={profileEdit()}
-                    className="flex min-w-0 items-center gap-3 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                    {user.avatar ? (
-                        <img
-                            src={user.avatar}
-                            alt=""
-                            className="size-[42px] shrink-0 rounded-full object-cover"
-                        />
-                    ) : (
-                        <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-[#141414]">
-                            {getInitials(user.name)}
-                        </span>
-                    )}
-                    <span className="min-w-0">
-                        <span className="block truncate text-xs text-white/85">
-                            {today}
-                            {siteName ? ` · ${siteName}` : ''}
-                        </span>
-                        <span className="block truncate text-lg font-bold">
-                            {greeting}
-                        </span>
-                    </span>
-                </Link>
-
-                {/* Desktop keeps this switch in the sidebar footer. */}
-                <button
-                    type="button"
-                    onClick={() => updateAppearance(dark ? 'light' : 'dark')}
-                    aria-label={
-                        dark ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'
-                    }
-                    className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/95 text-[#141414] outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-accent md:hidden"
-                >
-                    {dark ? (
-                        <Sun className="size-5" strokeWidth={1.8} aria-hidden />
-                    ) : (
-                        <Moon
-                            className="size-5"
-                            strokeWidth={1.8}
-                            aria-hidden
-                        />
-                    )}
-                </button>
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
-                <h1 className="text-[26px] leading-[1.15] font-extrabold tracking-tight">
-                    Siap terbitkan paklaring
-                    <br />
-                    hari ini?
+            <div className="flex flex-col gap-1 md:gap-1.5">
+                <p className="text-[13px] font-medium">
+                    {today} · {nf.format(activeEmployees)} karyawan aktif
+                </p>
+                <h1 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.025em] md:text-[34px]">
+                    {greeting}
                 </h1>
-                {isSuperAdmin && <SiteFilter sites={sites} value={siteId} />}
+                <p className="text-[13px] font-medium text-white/85">{scope}</p>
             </div>
         </section>
     );
 }
 
-function QuickActions() {
+/** Pill row under the hero, in the place of MyWahana's filter bar. */
+function HeroToolbar({
+    sites,
+    siteId,
+    isSuperAdmin,
+}: {
+    sites: Props['sites'];
+    siteId: number | null;
+    isSuperAdmin: boolean;
+}) {
     return (
-        <div className="relative z-10 -mt-12 grid grid-cols-3 gap-1 rounded-[22px] bg-card p-3 shadow-[0_8px_24px_oklch(0.191_0_0/0.07)]">
+        <div className="flex flex-wrap gap-2">
+            {isSuperAdmin && <SiteFilter sites={sites} value={siteId} />}
             {QUICK.map((q) => (
                 <Link
                     key={q.label}
                     href={q.href}
-                    className="flex min-h-[84px] flex-col items-center justify-center gap-2 rounded-[14px] text-center text-xs leading-tight font-semibold transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:min-h-16 md:flex-row md:justify-start md:gap-3 md:px-3 md:text-left md:text-sm"
+                    className={cn(
+                        'flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        q.accent
+                            ? 'bg-accent text-accent-foreground'
+                            : 'border border-border bg-card text-foreground hover:bg-muted',
+                    )}
                 >
-                    <span
-                        className={cn(
-                            'flex size-11 items-center justify-center rounded-full',
-                            q.accent
-                                ? 'bg-accent text-accent-foreground'
-                                : 'bg-muted text-foreground',
-                        )}
-                    >
-                        <q.icon
-                            className="size-5"
-                            strokeWidth={1.8}
-                            aria-hidden
-                        />
-                    </span>
+                    <q.icon
+                        className="size-[18px]"
+                        strokeWidth={1.8}
+                        aria-hidden
+                    />
                     {q.label}
                 </Link>
             ))}
@@ -559,18 +504,17 @@ export default function Dashboard({
             <Head title="Dashboard" />
 
             <div className="flex flex-col gap-4 md:gap-5">
-                <div className="flex flex-col">
-                    <Hero
-                        greeting={greetingLine}
-                        today={today}
-                        user={auth.user}
-                        siteName={site?.name ?? selectedSite?.name}
-                        sites={sites}
-                        siteId={filters.site_id}
-                        isSuperAdmin={isSuperAdmin}
-                    />
-                    <QuickActions />
-                </div>
+                <Hero
+                    greeting={greetingLine}
+                    today={today}
+                    activeEmployees={stats.activeEmployees}
+                    scope={site?.name ?? selectedSite?.name ?? 'Semua site'}
+                />
+                <HeroToolbar
+                    sites={sites}
+                    siteId={filters.site_id}
+                    isSuperAdmin={isSuperAdmin}
+                />
 
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))]">
                     <StatTile
